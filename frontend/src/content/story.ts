@@ -1,11 +1,11 @@
 export const openingNarration =
-  "Acordas no escuro. O tecido cobre-te os olhos, húmido e áspero. O chão está frio debaixo dos dedos. Algures à tua frente, uma gota cai devagar. Depois outra. Há uma porta perto. Consegues ouvir a madeira respirar.";
+  "Escuridão. O tecido sobre os teus olhos cheira a humidade e ferro. O chão é frio — pedra ou cimento, não tens a certeza. Uma gota cai algures à frente. Depois outra. Há uma porta. A madeira range sozinha, como se respirasse.";
 
 export const loadingNarration =
-  "Prendes a respiração. A casa escuta contigo...";
+  "Silêncio. A casa pensa contigo...";
 
 export const emptyNarrationFallback =
-  "O silêncio cresce. Há uma vibração no chão, quase como passos.";
+  "Nada acontece. Mas algo mudou no ar — mais denso, mais próximo.";
 
 export const connectionFailureNarration =
-  "O ar torna-se pesado. Algo range no corredor, mas a resposta perde-se antes de chegar a ti.";
+  "O ar torna-se espesso. Uma resposta forma-se mas dissolve-se antes de chegar.";

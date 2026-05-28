@@ -21,7 +21,7 @@ export function GameHeader({ isAmbientOn, onToggleAmbient }: GameHeaderProps) {
         title={isAmbientOn ? uiText.audioOnLabel : uiText.audioOffLabel}
         type="button"
       >
-        <Volume2 size={20} strokeWidth={1.4} />
+        <Volume2 size={16} strokeWidth={1.5} />
       </button>
     </header>
   );

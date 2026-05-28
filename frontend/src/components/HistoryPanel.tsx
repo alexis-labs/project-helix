@@ -23,7 +23,7 @@ export function HistoryPanel({ history, isOpen, onToggle }: HistoryPanelProps) {
           onClick={onToggle}
           type="button"
         >
-          <ChevronDown size={18} strokeWidth={1.6} />
+          <ChevronDown size={16} strokeWidth={1.8} />
           <span className="history-toggle-text">{uiText.historyTitle}</span>
         </button>
       </div>

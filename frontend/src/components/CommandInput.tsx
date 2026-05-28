@@ -26,7 +26,7 @@ export function CommandInput({
         value={message}
       />
       <button disabled={isLoading || message.trim().length === 0} type="submit">
-        <SendHorizontal size={18} strokeWidth={1.7} />
+        <SendHorizontal size={16} strokeWidth={1.8} />
         <span>{uiText.submitLabel}</span>
       </button>
     </form>
