@@ -61,7 +61,7 @@ async function narrateWithOpenAI(message: string, history: ClientTurn[]) {
     model,
     messages,
     temperature: 0.85,
-    max_tokens: 120
+    max_completion_tokens: 120
   });
 
   return (
