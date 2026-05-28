@@ -1,4 +1,5 @@
-import { ChevronDown } from "lucide-react";
+import { PanelRightClose, PanelRightOpen } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { uiText } from "../content/uiText";
 import type { Turn } from "../types";
 
@@ -9,6 +10,19 @@ type HistoryPanelProps = {
 };
 
 export function HistoryPanel({ history, isOpen, onToggle }: HistoryPanelProps) {
+  const listRef = useRef<HTMLOListElement>(null);
+  const ToggleIcon = isOpen ? PanelRightClose : PanelRightOpen;
+
+  useEffect(() => {
+    const list = listRef.current;
+
+    if (!list || !isOpen) {
+      return;
+    }
+
+    list.scrollTop = list.scrollHeight;
+  }, [history, isOpen]);
+
   return (
     <aside
       className={isOpen ? "history-panel is-open" : "history-panel"}
@@ -23,11 +37,10 @@ export function HistoryPanel({ history, isOpen, onToggle }: HistoryPanelProps) {
           onClick={onToggle}
           type="button"
         >
-          <ChevronDown size={16} strokeWidth={1.8} />
-          <span className="history-toggle-text">{uiText.historyTitle}</span>
+          <ToggleIcon size={17} strokeWidth={1.8} aria-hidden="true" />
         </button>
       </div>
-      <ol className="history-list" aria-hidden={!isOpen}>
+      <ol className="history-list" aria-hidden={!isOpen} ref={listRef}>
         {history.map((turn, index) => (
           <li className="history-turn" key={`${turn.role}-${index}`}>
             <div className="history-meta">

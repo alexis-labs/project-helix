@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { loadingNarration } from "../content/story";
 import { uiText } from "../content/uiText";
 
@@ -19,6 +19,7 @@ export function NarrationPanel({
     []
   );
   const [displayedText, setDisplayedText] = useState(targetText);
+  const panelRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (shouldReduceMotion || isLoading) {
@@ -41,8 +42,22 @@ export function NarrationPanel({
     return () => window.clearInterval(intervalId);
   }, [isLoading, shouldReduceMotion, targetText]);
 
+  useEffect(() => {
+    panelRef.current?.scrollTo({ top: 0 });
+  }, [currentAction, targetText]);
+
+  useEffect(() => {
+    const panel = panelRef.current;
+
+    if (!panel) {
+      return;
+    }
+
+    panel.scrollTop = panel.scrollHeight;
+  }, [currentAction, displayedText]);
+
   return (
-    <article className="narration-panel" aria-live="polite">
+    <article className="narration-panel" aria-live="polite" ref={panelRef}>
       {currentAction ? (
         <div className="current-action">
           <span>{uiText.currentActionLabel}</span>
