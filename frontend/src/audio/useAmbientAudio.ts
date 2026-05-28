@@ -3,6 +3,8 @@ import { useCallback, useRef, useState } from "react";
 type AudioGraph = {
   context: AudioContext;
   cleanup: () => void;
+  musicElement?: HTMLAudioElement;
+  mediaSource?: MediaElementAudioSourceNode;
 };
 
 type WindowWithWebAudio = Window &
@@ -13,6 +15,7 @@ type WindowWithWebAudio = Window &
 export function useAmbientAudio() {
   const [isAmbientOn, setIsAmbientOn] = useState(false);
   const graphRef = useRef<AudioGraph | null>(null);
+  const musicPath = "/bgm/Cold Interrogation.mp3";
 
   const stopAmbient = useCallback(() => {
     const graph = graphRef.current;
@@ -83,8 +86,32 @@ export function useAmbientAudio() {
     noise.start();
     lfo.start();
 
+    // Create and play background music (looped) at full volume, routed through the same master gain
+    let musicElement: HTMLAudioElement | undefined;
+    let mediaSource: MediaElementAudioSourceNode | undefined;
+    try {
+      musicElement = new Audio(musicPath);
+      musicElement.loop = true;
+      musicElement.volume = 1; // máximo
+
+      // connect via WebAudio so master gain affects it
+      mediaSource = context.createMediaElementSource(musicElement);
+      mediaSource.connect(master);
+
+      // play; browsers require a user gesture for autoplay — this will succeed when toggle is used
+      void musicElement.play().catch(() => {
+        // ignore play errors (autoplay blocked); user can press the toggle to start
+      });
+    }
+    catch (err) {
+      musicElement = undefined;
+      mediaSource = undefined;
+    }
+
     graphRef.current = {
       context,
+      musicElement,
+      mediaSource,
       cleanup: () => {
         const stopAt = context.currentTime + 0.35;
         lfoGain.gain.setValueAtTime(0, context.currentTime);
@@ -97,6 +124,22 @@ export function useAmbientAudio() {
           secondDrone.stop();
           noise.stop();
           lfo.stop();
+
+          // stop and cleanup music element
+          try {
+            if (musicElement) {
+              musicElement.pause();
+              musicElement.currentTime = 0;
+              if (mediaSource) {
+                mediaSource.disconnect();
+              }
+              musicElement.src = "";
+            }
+          }
+          catch (e) {
+            // ignore
+          }
+
           void context.close();
         }, 420);
       }

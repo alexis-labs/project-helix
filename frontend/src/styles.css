@@ -9,8 +9,20 @@
   --accent-dim: rgba(220, 38, 38, 0.15);
   --border: rgba(255, 255, 255, 0.06);
   --border-strong: rgba(255, 255, 255, 0.1);
+  --focus-ring: rgba(255, 255, 255, 0.03);
+  --scrollbar: rgba(255, 255, 255, 0.08);
+  --history-index: rgba(255, 255, 255, 0.2);
+  --title-text: #f5f0ea;
+  --title-end: #7f1d1d;
+  --title-shadow: #0a0a0a;
+  --title-glow: rgba(220, 38, 38, 0.16);
+  --title-word-glow: rgba(220, 38, 38, 0.16);
+  --title-band: rgba(10, 10, 10, 0.96);
+  --title-band-wash: rgba(10, 10, 10, 0.82);
+  --title-band-edge: rgba(255, 255, 255, 0.05);
   --radius: 12px;
 
+  color-scheme: dark;
   color: var(--text);
   background: var(--bg);
   font-family:
@@ -23,6 +35,32 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+}
+
+:root[data-theme="light"] {
+  --bg: #eceee6;
+  --surface: #fbf8f1;
+  --surface-elevated: #fffdf8;
+  --text: #635f55;
+  --text-strong: #26221d;
+  --muted: #8b8377;
+  --accent: #a93232;
+  --accent-dim: rgba(169, 50, 50, 0.12);
+  --border: rgba(76, 63, 45, 0.14);
+  --border-strong: rgba(76, 63, 45, 0.24);
+  --focus-ring: rgba(76, 63, 45, 0.07);
+  --scrollbar: rgba(76, 63, 45, 0.18);
+  --history-index: rgba(38, 34, 29, 0.28);
+  --title-text: #31291f;
+  --title-end: #9a2f2f;
+  --title-shadow: rgba(255, 253, 248, 0.86);
+  --title-glow: rgba(169, 50, 50, 0.12);
+  --title-word-glow: rgba(169, 50, 50, 0.1);
+  --title-band: rgba(251, 248, 241, 0.9);
+  --title-band-wash: rgba(236, 238, 230, 0.72);
+  --title-band-edge: rgba(76, 63, 45, 0.16);
+
+  color-scheme: light;
 }
 
 * {
@@ -110,7 +148,7 @@ button {
   isolation: isolate;
   display: inline-block;
   margin: 0;
-  color: #f5f0ea;
+  color: var(--title-text);
   font-family:
     "Palatino Linotype",
     "Book Antiqua",
@@ -123,8 +161,8 @@ button {
   letter-spacing: 0;
   text-transform: uppercase;
   text-shadow:
-    0 0 12px rgba(220, 38, 38, 0.16),
-    0 1px 0 #0a0a0a;
+    0 0 12px var(--title-glow),
+    0 1px 0 var(--title-shadow);
 }
 
 .title-block h1::after {
@@ -135,10 +173,10 @@ button {
   height: 0.28em;
   content: "";
   background:
-    linear-gradient(90deg, transparent 0 5%, rgba(10, 10, 10, 0.96) 12% 88%, transparent 95%),
-    linear-gradient(180deg, rgba(220, 38, 38, 0.22), rgba(10, 10, 10, 0.82));
+    linear-gradient(90deg, transparent 0 5%, var(--title-band) 12% 88%, transparent 95%),
+    linear-gradient(180deg, rgba(220, 38, 38, 0.22), var(--title-band-wash));
   border-top: 1px solid rgba(220, 38, 38, 0.18);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--title-band-edge);
   transform: rotate(-1.5deg);
   pointer-events: none;
 }
@@ -154,21 +192,21 @@ button {
   inset: -0.2em -0.1em;
   z-index: -1;
   content: "";
-  background: radial-gradient(circle at 35% 50%, rgba(220, 38, 38, 0.16), transparent 58%);
+  background: radial-gradient(circle at 35% 50%, var(--title-word-glow), transparent 58%);
   filter: blur(10px);
   opacity: 0.7;
 }
 
 .title-word-start {
-  color: #f5f0ea;
+  color: var(--title-text);
 }
 
 .title-word-end {
-  color: #7f1d1d;
+  color: var(--title-end);
   filter: blur(0.35px);
   text-shadow:
     0 0 10px rgba(220, 38, 38, 0.32),
-    0 1px 0 #0a0a0a;
+    0 1px 0 var(--title-shadow);
 }
 
 .title-block p {
@@ -179,9 +217,16 @@ button {
   line-height: 1.4;
 }
 
-/* ─── Audio Button ─── */
+/* ─── Header Buttons ─── */
 
-.audio-mark {
+.header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-mark {
   display: grid;
   flex: 0 0 auto;
   width: 36px;
@@ -199,21 +244,21 @@ button {
     background 150ms;
 }
 
-.audio-mark:hover,
-.audio-mark:focus-visible {
+.icon-mark:hover,
+.icon-mark:focus-visible {
   color: var(--text-strong);
   border-color: var(--border-strong);
   background: var(--surface);
   outline: 0;
 }
 
-.audio-mark.is-active {
+.icon-mark.is-active {
   color: var(--accent);
   border-color: var(--accent-dim);
   background: var(--accent-dim);
 }
 
-.audio-mark.is-active svg {
+.icon-mark.is-active svg {
   animation: audioBreath 3s ease-in-out infinite;
 }
 
@@ -228,7 +273,7 @@ button {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
-  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+  scrollbar-color: var(--scrollbar) transparent;
 }
 
 .narration-panel::before {
@@ -330,7 +375,7 @@ button {
 
 .command-line:focus-within {
   border-color: var(--border-strong);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.03);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .command-line input {
@@ -466,7 +511,7 @@ button {
   min-height: 0;
   padding: 0;
   overflow-y: auto;
-  scrollbar-color: rgba(255, 255, 255, 0.06) transparent;
+  scrollbar-color: var(--scrollbar) transparent;
 }
 
 .history-panel:not(.is-open) {
@@ -520,7 +565,7 @@ button {
 
 .history-index {
   min-width: 2.2ch;
-  color: rgba(255, 255, 255, 0.2);
+  color: var(--history-index);
 }
 
 .history-turn:nth-child(even) .history-role {

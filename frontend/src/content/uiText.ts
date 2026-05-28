@@ -12,6 +12,8 @@ export const uiText = {
   inputAriaLabel: "A tua ação",
   inputPlaceholder: "O que fazes?",
   submitLabel: "Enviar",
+  themeLightLabel: "Modo claro",
+  themeDarkLabel: "Modo escuro",
   audioOnLabel: "Silenciar",
   audioOffLabel: "Ambiente",
   requestError: "O narrador ficou em silêncio.",
