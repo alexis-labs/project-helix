@@ -1,5 +1,6 @@
 import { Volume2 } from "lucide-react";
 import { uiText } from "../content/uiText";
+import blindfoldLogo from "../images/blindfold_logo.png";
 
 type GameHeaderProps = {
   isAmbientOn: boolean;
@@ -10,7 +11,7 @@ export function GameHeader({ isAmbientOn, onToggleAmbient }: GameHeaderProps) {
   return (
     <header className="title-block">
       <div>
-        <h1>{uiText.title}</h1>
+        <img src={blindfoldLogo} alt="Blindfold" className="site-logo" />
         <p>{uiText.subtitle}</p>
       </div>
       <button
