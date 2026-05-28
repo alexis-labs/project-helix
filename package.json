@@ -10,5 +10,6 @@
     "build:frontend": "npm --prefix frontend run build",
     "dev:backend": "npm --prefix backend run dev",
     "dev:frontend": "npm --prefix frontend run dev"
+    ,"restart:dev": "powershell -ExecutionPolicy Bypass -File scripts/restart-all.ps1"
   }
 }
