@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { requestNarration } from "../api/play";
+import { useAmbientAudio } from "../audio/useAmbientAudio";
 import {
   connectionFailureNarration,
   openingNarration
@@ -12,6 +13,7 @@ import { HistoryPanel } from "./HistoryPanel";
 import { NarrationPanel } from "./NarrationPanel";
 
 export function App() {
+  const { isAmbientOn, toggleAmbient } = useAmbientAudio();
   const [currentReply, setCurrentReply] = useState(openingNarration);
   const [history, setHistory] = useState<Turn[]>([
     { role: "narrator", content: openingNarration }
@@ -56,7 +58,7 @@ export function App() {
   return (
     <main className="game-shell">
       <section className="play-area" aria-label={uiText.mainAriaLabel}>
-        <GameHeader />
+        <GameHeader isAmbientOn={isAmbientOn} onToggleAmbient={toggleAmbient} />
         <NarrationPanel currentReply={currentReply} isLoading={isLoading} />
         <CommandInput
           isLoading={isLoading}

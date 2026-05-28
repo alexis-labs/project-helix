@@ -153,11 +153,38 @@ button {
   flex: 0 0 auto;
   width: 44px;
   height: 44px;
+  padding: 0;
   place-items: center;
   color: #b6afa5;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.025);
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.audio-mark:hover,
+.audio-mark:focus-visible {
+  color: #f1d8d4;
+  border-color: rgba(179, 58, 49, 0.58);
+  outline: 0;
+}
+
+.audio-mark.is-active {
+  color: #f0b4ad;
+  border-color: rgba(179, 58, 49, 0.72);
+  background:
+    linear-gradient(180deg, rgba(179, 58, 49, 0.14), rgba(179, 58, 49, 0.04)),
+    rgba(255, 255, 255, 0.025);
+  box-shadow: 0 0 26px rgba(179, 58, 49, 0.18);
+}
+
+.audio-mark.is-active svg {
+  animation: audioBreath 2.8s ease-in-out infinite;
 }
 
 .narration-panel {
@@ -177,6 +204,13 @@ button {
     inset 0 0 90px rgba(0, 0, 0, 0.58),
     0 20px 70px rgba(0, 0, 0, 0.36);
   scrollbar-color: rgba(221, 216, 207, 0.28) transparent;
+}
+
+.narration-panel::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
 }
 
 .speaker {
@@ -208,6 +242,22 @@ button {
   line-height: 1.66;
   overflow-wrap: break-word;
   white-space: pre-wrap;
+}
+
+.typewriter-text {
+  text-shadow:
+    0 0 10px rgba(221, 216, 207, 0.08),
+    0 0 22px rgba(179, 58, 49, 0.04);
+}
+
+.text-cursor {
+  display: inline-block;
+  width: 0.7ch;
+  height: 1em;
+  margin-left: 0.12ch;
+  vertical-align: -0.12em;
+  border-right: 1px solid rgba(244, 214, 209, 0.88);
+  animation: cursorBlink 860ms steps(1) infinite;
 }
 
 .command-line {
@@ -477,6 +527,9 @@ button {
   .title-block {
     gap: 12px;
     margin-bottom: 20px;
+    flex-direction: column;
+    align-items: flex-start;
+    overflow: visible;
   }
 
   .title-block h1 {
@@ -496,7 +549,8 @@ button {
   }
 
   .audio-mark {
-    display: none;
+    width: 36px;
+    height: 36px;
   }
 
   .narration-panel {
@@ -556,10 +610,44 @@ button {
 
 @media (max-width: 380px) {
   .title-block h1 {
-    font-size: 2.08rem;
+    font-size: 1.9rem;
   }
 
   .narration-panel {
     padding: 20px 15px;
+  }
+}
+
+@keyframes cursorBlink {
+  0%,
+  48% {
+    opacity: 1;
+  }
+
+  49%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes audioBreath {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
