@@ -21,6 +21,7 @@ export function App() {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isHistoryOpen, setIsHistoryOpen] = useState(true);
 
   async function submitAction(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,7 +57,7 @@ export function App() {
   }
 
   return (
-    <main className="game-shell">
+    <main className={isHistoryOpen ? "game-shell" : "game-shell is-history-collapsed"}>
       <section className="play-area" aria-label={uiText.mainAriaLabel}>
         <GameHeader isAmbientOn={isAmbientOn} onToggleAmbient={toggleAmbient} />
         <NarrationPanel currentReply={currentReply} isLoading={isLoading} />
@@ -69,7 +70,11 @@ export function App() {
         {error ? <p className="error-text">{error}</p> : null}
       </section>
 
-      <HistoryPanel history={history} />
+      <HistoryPanel
+        history={history}
+        isOpen={isHistoryOpen}
+        onToggle={() => setIsHistoryOpen((current) => !current)}
+      />
     </main>
   );
 }

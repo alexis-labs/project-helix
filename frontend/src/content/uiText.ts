@@ -4,6 +4,8 @@ export const uiText = {
   narratorLabel: "Narrador",
   playerLabel: "Você",
   historyTitle: "Histórico",
+  historyCollapseLabel: "Colapsar histórico",
+  historyExpandLabel: "Abrir histórico",
   mainAriaLabel: "Blindfold",
   historyAriaLabel: "Histórico",
   inputAriaLabel: "Ação do jogador",

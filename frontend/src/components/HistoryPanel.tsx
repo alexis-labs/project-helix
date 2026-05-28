@@ -1,15 +1,14 @@
-import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { uiText } from "../content/uiText";
 import type { Turn } from "../types";
 
 type HistoryPanelProps = {
   history: Turn[];
+  isOpen: boolean;
+  onToggle: () => void;
 };
 
-export function HistoryPanel({ history }: HistoryPanelProps) {
-  const [isOpen, setIsOpen] = useState(true);
-
+export function HistoryPanel({ history, isOpen, onToggle }: HistoryPanelProps) {
   return (
     <aside
       className={isOpen ? "history-panel is-open" : "history-panel"}
@@ -19,22 +18,27 @@ export function HistoryPanel({ history }: HistoryPanelProps) {
         <h2>{uiText.historyTitle}</h2>
         <button
           aria-expanded={isOpen}
-          aria-label={isOpen ? "Fechar histórico" : "Abrir histórico"}
+          aria-label={isOpen ? uiText.historyCollapseLabel : uiText.historyExpandLabel}
           className="history-toggle"
-          onClick={() => setIsOpen((current) => !current)}
+          onClick={onToggle}
           type="button"
         >
           <ChevronDown size={18} strokeWidth={1.6} />
         </button>
       </div>
-      <div className="history-list" aria-hidden={!isOpen}>
+      <ol className="history-list" aria-hidden={!isOpen}>
         {history.map((turn, index) => (
-          <div className="history-turn" key={`${turn.role}-${index}`}>
-            <span>{turn.role === "player" ? uiText.playerLabel : uiText.narratorLabel}</span>
+          <li className="history-turn" key={`${turn.role}-${index}`}>
+            <div className="history-meta">
+              <span className="history-index">{String(index + 1).padStart(2, "0")}</span>
+              <span className="history-role">
+                {turn.role === "player" ? uiText.playerLabel : uiText.narratorLabel}
+              </span>
+            </div>
             <p>{turn.content}</p>
-          </div>
+          </li>
         ))}
-      </div>
+      </ol>
     </aside>
   );
 }

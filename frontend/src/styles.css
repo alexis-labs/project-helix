@@ -33,15 +33,17 @@
 
 html {
   min-width: 320px;
+  height: 100%;
+  overflow: hidden;
   background: var(--bg);
 }
 
 body {
   min-width: 320px;
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
   margin: 0;
-  overflow-x: hidden;
+  overflow: hidden;
   background:
     linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px),
@@ -49,6 +51,11 @@ body {
     radial-gradient(circle at 5% 90%, rgba(179, 58, 49, 0.08), transparent 20rem),
     #030303;
   background-size: 100% 4px, 4px 100%, auto, auto, auto;
+}
+
+#root {
+  height: 100%;
+  overflow: hidden;
 }
 
 body::before {
@@ -76,15 +83,22 @@ button {
   grid-template-columns: minmax(0, 1fr) clamp(300px, 24vw, 390px);
   gap: 0;
   width: min(100%, 1680px);
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   margin: 0 auto;
   padding: clamp(12px, 1.8vw, 24px);
   overflow: hidden;
+  transition: grid-template-columns 180ms ease;
+}
+
+.game-shell.is-history-collapsed {
+  grid-template-columns: minmax(0, 1fr) 68px;
 }
 
 .play-area,
 .history-panel {
+  min-height: 0;
   border: 1px solid var(--border);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent 18rem),
@@ -340,12 +354,14 @@ button {
 .history-panel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  min-width: 0;
   max-width: 100%;
   min-width: 0;
   padding: clamp(22px, 2.4vw, 34px);
   overflow: hidden;
   border-radius: 0 var(--radius) var(--radius) 0;
+  transition:
+    padding 180ms ease,
+    border-color 180ms ease;
 }
 
 .history-heading {
@@ -368,7 +384,7 @@ button {
 }
 
 .history-toggle {
-  display: none;
+  display: grid;
   width: 36px;
   height: 36px;
   place-items: center;
@@ -377,6 +393,17 @@ button {
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.025);
   cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.history-toggle:hover,
+.history-toggle:focus-visible {
+  color: #f1d8d4;
+  border-color: rgba(179, 58, 49, 0.58);
+  outline: 0;
 }
 
 .history-toggle svg {
@@ -388,11 +415,35 @@ button {
 }
 
 .history-list {
+  margin: 0;
+  list-style: none;
   min-width: 0;
   min-height: 0;
-  padding-right: 8px;
+  padding: 0 8px 0 0;
   overflow-y: auto;
   scrollbar-color: rgba(221, 216, 207, 0.28) transparent;
+}
+
+.history-panel:not(.is-open) {
+  grid-template-rows: auto;
+  justify-items: center;
+  padding: 18px 14px;
+}
+
+.history-panel:not(.is-open) .history-heading {
+  justify-content: center;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.history-panel:not(.is-open) h2,
+.history-panel:not(.is-open) .history-list {
+  display: none;
+}
+
+.history-panel:not(.is-open) .history-toggle svg {
+  transform: rotate(-90deg);
 }
 
 .history-turn {
@@ -404,16 +455,29 @@ button {
   padding-top: 0;
 }
 
-.history-turn span {
-  display: block;
+.history-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 9px;
+}
+
+.history-index,
+.history-role {
+  display: inline-flex;
   color: var(--muted);
   font-size: 0.74rem;
   font-weight: 700;
+  line-height: 1;
   text-transform: uppercase;
 }
 
-.history-turn:nth-child(even) span {
+.history-index {
+  min-width: 2.4ch;
+  color: rgba(221, 216, 207, 0.42);
+}
+
+.history-turn:nth-child(even) .history-role {
   color: #c44941;
 }
 
@@ -437,16 +501,18 @@ button {
   }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 1180px) {
   .game-shell {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(118px, 30dvh);
     width: calc(100vw - 24px);
     max-width: calc(100vw - 24px);
-    min-height: 100dvh;
-    flex-direction: column;
+    height: calc(100dvh - 24px);
+    min-height: 0;
     gap: 12px;
     padding: 0;
-    overflow-x: clip;
+    overflow: hidden;
   }
 
   .play-area,
@@ -457,8 +523,8 @@ button {
   }
 
   .play-area {
-    grid-template-rows: auto minmax(360px, 1fr) auto auto;
-    min-height: auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    min-height: 0;
     min-width: 0;
     overflow: hidden;
     border-right: 1px solid var(--border);
@@ -480,7 +546,9 @@ button {
   }
 
   .history-panel {
-    display: block;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 0;
     padding: 18px;
   }
 
@@ -496,6 +564,7 @@ button {
   }
 
   .history-list {
+    min-height: 0;
     max-height: 0;
     padding-right: 0;
     overflow: hidden;
@@ -505,7 +574,7 @@ button {
   }
 
   .history-panel.is-open .history-list {
-    max-height: 42vh;
+    max-height: none;
     padding-top: 18px;
     overflow-y: auto;
   }
@@ -518,7 +587,7 @@ button {
   }
 
   .play-area {
-    grid-template-rows: auto minmax(300px, 1fr) auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
     padding: 22px 14px 14px;
     width: 100%;
     max-width: 100%;
