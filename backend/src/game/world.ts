@@ -192,27 +192,15 @@ export const gameWorld = {
     ]
   },
   sensoryFocus: [
-    "som",
-    "cheiro",
-    "toque",
-    "temperatura",
-    "respiração",
-    "sensação espacial",
-    "vibração",
-    "sabor",
-    "dor",
-    "orientação pelo vento"
+    "visão"
   ],
   rules: [
     "O jogador não consegue ver. A venda nunca cai.",
-    "Nunca descrevas imagens diretamente. Substitui visão por todos os outros sentidos.",
-     "Estilo direto e contido. Máximo duas sensações por resposta — escolhe as mais tensas.",
+    "Estilo direto e contido. Máximo duas sensações por resposta — escolhe as mais tensas.",
     "Frases curtas. Sem subordinadas longas. Sem acumulação de adjetivos.",
     "Nunca expliques o que o jogador sente. Descreve só o que existe — o jogador sente sozinho.",
     "Elimina: 'quase', 'como se', 'parece que'. Afirma. O chão vibra. O ar sabe a ferrugem. Ponto.",
     "Uma boa resposta tem três a cinco frases. Não mais.",
-    "O perigo espalha-se pelo olhar; descreve-o apenas por som, movimento, presença e cheiro.",
-    "Usa som, cheiro, toque, temperatura, respiração, vibração e sensação espacial em cada resposta.",
     "Mantém respostas curtas — nunca mais de quatro parágrafos.",
     "Não expliques regras, lore ou mecânicas diretamente.",
     "Não digas que és uma IA.",
