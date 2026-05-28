@@ -8,10 +8,20 @@ O jogador acorda vendado numa casa abandonada. Nao ve nada. So pode perguntar, o
 
 MVP jogavel em browser.
 
-- Frontend: React, Vite, TypeScript
-- Backend: Node.js, Express, TypeScript
+- Frontend: React 19, Vite 7, TypeScript
+- Backend: Node.js 22, Express, TypeScript
 - LLM: OpenAI API via `.env`
 - Fallback local: permite testar o jogo sem chave de API
+
+## Documentação
+
+| Ficheiro | Descrição |
+|----------|-----------|
+| [INDEX.md](INDEX.md) | Índice completo de ficheiros e fluxo de dados |
+| [AGENTS.md](AGENTS.md) | Instruções para agentes de código (Copilot, Claude) |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Como contribuir |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Código de conduta |
+| [SECURITY.md](SECURITY.md) | Política de segurança |
 
 ## Demo local
 
@@ -100,6 +110,8 @@ npm --prefix frontend run build
 
 ## Estrutura
 
+Ver [INDEX.md](INDEX.md) para o índice completo.
+
 ```txt
 .
 |-- backend
@@ -113,13 +125,13 @@ npm --prefix frontend run build
 |-- frontend
 |   `-- src
 |       |-- api
+|       |-- audio
 |       |-- components
 |       |-- content
 |       |-- main.tsx
 |       `-- styles.css
-|-- .github
-|   |-- ISSUE_TEMPLATE
-|   `-- workflows
+|-- AGENTS.md
+|-- INDEX.md
 |-- CONTRIBUTING.md
 |-- CODE_OF_CONDUCT.md
 |-- SECURITY.md
@@ -174,6 +186,8 @@ Blindfold funciona melhor quando a escrita respeita estas regras:
 ## Como contribuir
 
 Le [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Para contexto técnico e decisões de design, consulta [AGENTS.md](AGENTS.md).
 
 Contribuicoes bem-vindas:
 

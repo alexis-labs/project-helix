@@ -24,6 +24,7 @@ export function HistoryPanel({ history, isOpen, onToggle }: HistoryPanelProps) {
           type="button"
         >
           <ChevronDown size={18} strokeWidth={1.6} />
+          <span className="history-toggle-text">{uiText.historyTitle}</span>
         </button>
       </div>
       <ol className="history-list" aria-hidden={!isOpen}>
