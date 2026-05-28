@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import express from "express";
 import OpenAI from "openai";
 import { systemPrompt } from "./game/systemPrompt.ts";
-import { fallbackNarration } from "./game/story.ts";
+import { fallbackNarration } from "./game/fallbackNarrator.ts";
 import type { ClientTurn } from "./game/types.ts";
 
 dotenv.config({ path: process.env.DOTENV_CONFIG_PATH || "../.env" });
@@ -34,18 +34,18 @@ app.post("/api/play", async (request, response) => {
   try {
     const reply = openai
       ? await narrateWithOpenAI(message, history)
-      : fallbackNarration(message, history.length);
+      : fallbackNarration(history.length);
 
     response.json({ reply });
   } catch (error) {
     console.error("Narration error:", error);
-    response.json({ reply: fallbackNarration(message, history.length) });
+    response.json({ reply: fallbackNarration(history.length) });
   }
 });
 
 async function narrateWithOpenAI(message: string, history: ClientTurn[]) {
   if (!openai) {
-    return fallbackNarration(message, history.length);
+    return fallbackNarration(history.length);
   }
 
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
@@ -66,7 +66,7 @@ async function narrateWithOpenAI(message: string, history: ClientTurn[]) {
 
   return (
     completion.choices[0]?.message?.content?.trim() ||
-    fallbackNarration(message, history.length)
+    fallbackNarration(history.length)
   );
 }
 

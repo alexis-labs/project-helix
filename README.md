@@ -105,9 +105,10 @@ npm --prefix frontend run build
 |-- backend
 |   `-- src
 |       |-- game
-|       |   |-- story.ts
+|       |   |-- fallbackNarrator.ts
 |       |   |-- systemPrompt.ts
-|       |   `-- types.ts
+|       |   |-- types.ts
+|       |   `-- world.ts
 |       `-- server.ts
 |-- frontend
 |   `-- src
@@ -127,8 +128,9 @@ npm --prefix frontend run build
 
 ## Onde editar
 
-- Prompt do narrador: `backend/src/game/systemPrompt.ts`
-- Respostas fallback e beats da historia: `backend/src/game/story.ts`
+- Mundo, premissa e regras narrativas: `backend/src/game/world.ts`
+- Prompt final enviado ao LLM: `backend/src/game/systemPrompt.ts`
+- Respostas offline quando nao ha LLM: `backend/src/game/fallbackNarrator.ts`
 - Texto inicial e mensagens de estado: `frontend/src/content/story.ts`
 - Textos fixos da interface: `frontend/src/content/uiText.ts`
 - Chamada ao endpoint: `frontend/src/api/play.ts`
@@ -180,7 +182,7 @@ Contribuicoes bem-vindas:
 - Beats narrativos sensoriais.
 - Polimento visual.
 - Documentacao para novos contribuidores.
-- Melhorias de prompts e fallback local.
+- Melhorias de prompts e fallback offline.
 
 Antes de abrir PR:
 
@@ -201,7 +203,7 @@ Este repo inclui:
 ## Roadmap curto
 
 - Melhor persistencia de estado narrativo.
-- Mais beats fallback sem LLM.
+- Mais respostas fallback sem LLM.
 - Modo de debug para comparar prompt, historico e resposta.
 - Testes automatizados para API e componentes principais.
 - Melhor experiencia mobile.

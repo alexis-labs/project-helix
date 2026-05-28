@@ -27,8 +27,9 @@ npm run build
 
 ## Onde editar
 
-- Prompt do narrador: `backend/src/game/systemPrompt.ts`
-- Fallbacks e beats da historia: `backend/src/game/story.ts`
+- Mundo, premissa e regras narrativas: `backend/src/game/world.ts`
+- Prompt final enviado ao LLM: `backend/src/game/systemPrompt.ts`
+- Respostas offline quando nao ha LLM: `backend/src/game/fallbackNarrator.ts`
 - Texto inicial e mensagens de estado: `frontend/src/content/story.ts`
 - Textos fixos da interface: `frontend/src/content/uiText.ts`
 - Componentes visuais: `frontend/src/components/`
