@@ -11,6 +11,17 @@ README.md
 .env.example
 ```
 
+## Ficheiros editaveis
+
+- Prompt do narrador: `backend/src/game/systemPrompt.ts`
+- Respostas fallback e beats da historia: `backend/src/game/story.ts`
+- Texto inicial do jogador: `frontend/src/content/story.ts`
+- Textos fixos da interface: `frontend/src/content/uiText.ts`
+- Chamada ao endpoint do jogo: `frontend/src/api/play.ts`
+- Componentes da UI: `frontend/src/components/`
+
+Assim podes mudar prompt, historia ou UI sem abrir os ficheiros principais do servidor ou do ponto de entrada React.
+
 ## Requisitos
 
 - Node.js 20+
