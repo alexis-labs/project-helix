@@ -515,6 +515,11 @@ button {
     overflow: hidden;
   }
 
+  .game-shell.is-history-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) 64px;
+  }
+
   .play-area,
   .history-panel {
     width: 100%;
@@ -563,6 +568,18 @@ button {
     display: grid;
   }
 
+  .history-panel:not(.is-open) {
+    padding: 14px 18px;
+  }
+
+  .history-panel:not(.is-open) .history-heading {
+    justify-content: flex-start;
+  }
+
+  .history-panel:not(.is-open) .history-toggle svg {
+    transform: rotate(0deg);
+  }
+
   .history-list {
     min-height: 0;
     max-height: 0;
@@ -584,6 +601,10 @@ button {
   .game-shell {
     width: calc(100vw - 16px);
     max-width: calc(100vw - 16px);
+  }
+
+  .game-shell.is-history-collapsed {
+    grid-template-rows: minmax(0, 1fr) 60px;
   }
 
   .play-area {
@@ -666,6 +687,10 @@ button {
 
   .history-panel {
     padding: 16px;
+  }
+
+  .history-panel:not(.is-open) {
+    padding: 12px 14px;
   }
 
   .history-turn {

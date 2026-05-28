@@ -1,8 +1,28 @@
 node_modules/
 dist/
+build/
 compiled/
 .env
 .env.local
 *.local
 *.log
 *.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Browser profiles
+.codex-chrome-profile/
+
+# Dependencies lockfiles (if using specific package managers)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
