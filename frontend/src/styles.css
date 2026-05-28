@@ -513,6 +513,10 @@ button {
   flex-wrap: nowrap;
 }
 
+.history-panel:not(.is-open) .history-toggle {
+  order: -1;
+}
+
 .history-panel:not(.is-open) h2,
 .history-panel:not(.is-open) .history-list {
   display: none;
@@ -635,6 +639,10 @@ button {
   .history-panel:not(.is-open) .sidebar-actions {
     flex-direction: row;
     justify-content: flex-start;
+  }
+
+  .history-panel:not(.is-open) .history-toggle {
+    order: 0;
   }
 
 }
