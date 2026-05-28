@@ -20,9 +20,7 @@ Referência rápida de ficheiros e pastas.
 | Caminho | Descrição |
 |---------|-----------|
 | `src/server.ts` | Servidor Express — endpoints `/api/health` e `/api/play` |
-| `src/game/world.ts` | Definição do mundo, premissa e regras narrativas |
-| `src/game/systemPrompt.ts` | Prompt de sistema enviado ao LLM |
-| `src/game/fallbackNarrator.ts` | Respostas offline quando não há chave API |
+| `src/game/llmConfig.ts` | Configuracao LLM, prompt, mundo, regras narrativas e fallback offline |
 | `src/game/types.ts` | Tipos partilhados do jogo |
 | `tsconfig.json` | Configuração TypeScript do backend |
 
@@ -53,7 +51,7 @@ Referência rápida de ficheiros e pastas.
 ```
 Jogador → CommandInput → App.submitAction → fetch /api/play
                                                   ↓
-                              server.ts → OpenAI (ou fallback)
+                              server.ts → llmConfig.ts → OpenAI (ou fallback)
                                                   ↓
                               reply → NarrationPanel (typewriter)
                                     → HistoryPanel (lista)

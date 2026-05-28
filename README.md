@@ -117,10 +117,8 @@ Ver [INDEX.md](INDEX.md) para o índice completo.
 |-- backend
 |   `-- src
 |       |-- game
-|       |   |-- fallbackNarrator.ts
-|       |   |-- systemPrompt.ts
+|       |   |-- llmConfig.ts
 |       |   |-- types.ts
-|       |   `-- world.ts
 |       `-- server.ts
 |-- frontend
 |   `-- src
@@ -140,9 +138,7 @@ Ver [INDEX.md](INDEX.md) para o índice completo.
 
 ## Onde editar
 
-- Mundo, premissa e regras narrativas: `backend/src/game/world.ts`
-- Prompt final enviado ao LLM: `backend/src/game/systemPrompt.ts`
-- Respostas offline quando nao ha LLM: `backend/src/game/fallbackNarrator.ts`
+- Configuracao LLM, prompt, mundo, regras e fallback offline: `backend/src/game/llmConfig.ts`
 - Texto inicial e mensagens de estado: `frontend/src/content/story.ts`
 - Textos fixos da interface: `frontend/src/content/uiText.ts`
 - Chamada ao endpoint: `frontend/src/api/play.ts`
