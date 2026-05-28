@@ -1,6 +1,6 @@
 export const uiText = {
   title: "Blindfold",
-  subtitle: "Uma casa. Uma venda. Nenhuma saída visível.",
+  subtitle: "Uma venda. Nenhuma saída visível.",
   narratorLabel: "Narrador",
   playerLabel: "Você",
   currentActionLabel: "Ação",

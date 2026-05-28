@@ -106,16 +106,69 @@ button {
 }
 
 .title-block h1 {
+  position: relative;
+  isolation: isolate;
+  display: inline-block;
   margin: 0;
-  color: var(--text-strong);
-  font-family: inherit;
-  font-size: clamp(1.1rem, 1.6vw, 1.4rem);
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  color: #f5f0ea;
+  font-family:
+    "Palatino Linotype",
+    "Book Antiqua",
+    Palatino,
+    Georgia,
+    serif;
+  font-size: 2.15rem;
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 12px rgba(220, 38, 38, 0.16),
+    0 1px 0 #0a0a0a;
 }
 
 .title-block h1::after {
-  display: none;
+  position: absolute;
+  z-index: 1;
+  inset: 45% -0.18em auto -0.12em;
+  display: block;
+  height: 0.28em;
+  content: "";
+  background:
+    linear-gradient(90deg, transparent 0 5%, rgba(10, 10, 10, 0.96) 12% 88%, transparent 95%),
+    linear-gradient(180deg, rgba(220, 38, 38, 0.22), rgba(10, 10, 10, 0.82));
+  border-top: 1px solid rgba(220, 38, 38, 0.18);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transform: rotate(-1.5deg);
+  pointer-events: none;
+}
+
+.title-word {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.title-word::before {
+  position: absolute;
+  inset: -0.2em -0.1em;
+  z-index: -1;
+  content: "";
+  background: radial-gradient(circle at 35% 50%, rgba(220, 38, 38, 0.16), transparent 58%);
+  filter: blur(10px);
+  opacity: 0.7;
+}
+
+.title-word-start {
+  color: #f5f0ea;
+}
+
+.title-word-end {
+  color: #7f1d1d;
+  filter: blur(0.35px);
+  text-shadow:
+    0 0 10px rgba(220, 38, 38, 0.32),
+    0 1px 0 #0a0a0a;
 }
 
 .title-block p {
@@ -559,7 +612,7 @@ button {
   }
 
   .title-block h1 {
-    font-size: 1rem;
+    font-size: 1.48rem;
   }
 
   .narration-panel {
