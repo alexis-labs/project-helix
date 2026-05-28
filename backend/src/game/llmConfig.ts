@@ -1,4 +1,4 @@
-export const gameWorld = {
+const gameWorld = {
   title: "Blindfold",
   premise:
     "Chamaram-lhe o Clarão. Não foi uma bomba, não foi uma doença — foi algo que o olho humano não deveria ter visto. Uma transmissão de luz que viajou pelas redes óticas globais e depois saltou para o mundo real: ecrãs, janelas, reflexos em poças de chuva. Quem o viu perdeu tudo em cascata — primeiro o nome, depois a voz, depois a ideia de si mesmo. Em horas, transformavam-se em Errantes: corpos funcionais, vazios de intenção, atraídos apenas por movimento e calor. Mas os olhos continuam a transmitir. O contato visual com um Errante propaga o Clarão de pessoa para pessoa, como uma chama que não precisa de fósforo.\n\nOs sobreviventes são os que não viram. Cegos de nascença, trabalhadores de minas sem luz, pessoas que dormiam em quartos sem janelas naquele momento exato. Algumas vendaram-se a tempo. Poucos. O mundo de superfície pertence agora aos Errantes — que não caçam, mas convergem, atraídos por sons e calor humano, em silêncios que partem o coração.\n\nPassaram dezoito meses. O jogador acorda num abrigo improvisado debaixo de um edifício desconhecido. A venda está apertada. O ar cheira a cimento húmido, a cobre velho e a qualquer coisa que estragou há dias. Alguém esteve aqui. Talvez ainda esteja.",
@@ -35,3 +35,39 @@ export const gameWorld = {
     "Responde sempre em português de Portugal (PT-PT)."
   ]
 };
+
+const rules = gameWorld.rules.map((rule) => `- ${rule}`).join("\n");
+const lore = Object.values(gameWorld.lore).join("\n\n");
+
+export const systemPrompt = `És o narrador de um jogo de terror psicológico chamado ${gameWorld.title}.
+
+${gameWorld.premise}
+
+${gameWorld.interaction}
+${gameWorld.narratorGoal}
+
+Contexto do mundo:
+${lore}
+
+Regras:
+${rules}
+
+Responde apenas com texto narrativo.`;
+
+export const llmConfig = {
+  model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
+  temperature: 0.85,
+  maxCompletionTokens: 120
+};
+
+const offlineFallbacks = [
+  "O silêncio muda de peso. Há espaço à tua frente, mas o chão range no limite dos teus pés. Se te ajoelhares, talvez sintas por onde seguir.",
+  "O tecido da venda aperta quando respiras. Um cheiro a mofo e vela apagada vem de algum lugar baixo, perto de uma abertura.",
+  "Algo toca de leve na tua nuca e desaparece. Não foi mão. Foi frio. À direita, uma corrente de ar passa por uma fresta.",
+  "A casa acomoda-se à tua volta, como se tivesse acordado também. Uma gota cai perto do teu sapato esquerdo. Depois, deixa de cair.",
+  "A madeira suspira algures perto. O ar muda de direção por um instante, como se uma porta tivesse ficado entreaberta."
+];
+
+export function fallbackNarration(historyLength: number) {
+  return offlineFallbacks[historyLength % offlineFallbacks.length];
+}

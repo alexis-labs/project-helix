@@ -2,15 +2,13 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import OpenAI from "openai";
-import { systemPrompt } from "./game/systemPrompt.ts";
-import { fallbackNarration } from "./game/fallbackNarrator.ts";
+import { fallbackNarration, llmConfig, systemPrompt } from "./game/llmConfig.ts";
 import type { ClientTurn } from "./game/types.ts";
 
 dotenv.config({ path: process.env.DOTENV_CONFIG_PATH || "../.env" });
 
 const app = express();
 const port = Number(process.env.PORT || 3001);
-const model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null;
@@ -58,10 +56,10 @@ async function narrateWithOpenAI(message: string, history: ClientTurn[]) {
   ];
 
   const completion = await openai.chat.completions.create({
-    model,
+    model: llmConfig.model,
     messages,
-    temperature: 0.85,
-    max_completion_tokens: 120
+    temperature: llmConfig.temperature,
+    max_completion_tokens: llmConfig.maxCompletionTokens
   });
 
   return (
