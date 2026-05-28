@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { Moon, Sun, Volume2 } from "lucide-react";
 import { requestNarration } from "../api/play";
 import { useAmbientAudio } from "../audio/useAmbientAudio";
 import {
@@ -6,7 +7,7 @@ import {
   openingNarration
 } from "../content/story";
 import { uiText } from "../content/uiText";
-import type { Turn } from "../types";
+import type { SidebarAction, Turn } from "../types";
 import { CommandInput } from "./CommandInput";
 import { GameHeader } from "./GameHeader";
 import { HistoryPanel } from "./HistoryPanel";
@@ -28,6 +29,25 @@ export function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [isHistoryOpen, setIsHistoryOpen] = useState(true);
+  const isLightTheme = theme === "light";
+  const sidebarActions: SidebarAction[] = [
+    {
+      id: "theme",
+      label: isLightTheme ? uiText.themeDarkLabel : uiText.themeLightLabel,
+      icon: isLightTheme ? Moon : Sun,
+      isPressed: isLightTheme,
+      onClick: () =>
+        setTheme((currentTheme) => (currentTheme === "light" ? "dark" : "light"))
+    },
+    {
+      id: "audio",
+      label: isAmbientOn ? uiText.audioOnLabel : uiText.audioOffLabel,
+      icon: Volume2,
+      isActive: isAmbientOn,
+      isPressed: isAmbientOn,
+      onClick: toggleAmbient
+    }
+  ];
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -71,14 +91,7 @@ export function App() {
   return (
     <main className={isHistoryOpen ? "game-shell" : "game-shell is-history-collapsed"}>
       <section className="play-area" aria-label={uiText.mainAriaLabel}>
-        <GameHeader
-          isAmbientOn={isAmbientOn}
-          isLightTheme={theme === "light"}
-          onToggleAmbient={toggleAmbient}
-          onToggleTheme={() =>
-            setTheme((currentTheme) => (currentTheme === "light" ? "dark" : "light"))
-          }
-        />
+        <GameHeader />
         <NarrationPanel
           currentAction={currentAction}
           currentReply={currentReply}
@@ -94,6 +107,7 @@ export function App() {
       </section>
 
       <HistoryPanel
+        actions={sidebarActions}
         history={history}
         isOpen={isHistoryOpen}
         onToggle={() => setIsHistoryOpen((current) => !current)}

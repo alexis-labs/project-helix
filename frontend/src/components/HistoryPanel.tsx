@@ -1,15 +1,16 @@
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { uiText } from "../content/uiText";
-import type { Turn } from "../types";
+import type { SidebarAction, Turn } from "../types";
 
 type HistoryPanelProps = {
+  actions: SidebarAction[];
   history: Turn[];
   isOpen: boolean;
   onToggle: () => void;
 };
 
-export function HistoryPanel({ history, isOpen, onToggle }: HistoryPanelProps) {
+export function HistoryPanel({ actions, history, isOpen, onToggle }: HistoryPanelProps) {
   const listRef = useRef<HTMLOListElement>(null);
   const ToggleIcon = isOpen ? PanelRightClose : PanelRightOpen;
 
@@ -28,17 +29,38 @@ export function HistoryPanel({ history, isOpen, onToggle }: HistoryPanelProps) {
       className={isOpen ? "history-panel is-open" : "history-panel"}
       aria-label={uiText.historyAriaLabel}
     >
-      <div className="history-heading">
+      <div className="sidebar-top">
         <h2>{uiText.historyTitle}</h2>
-        <button
-          aria-expanded={isOpen}
-          aria-label={isOpen ? uiText.historyCollapseLabel : uiText.historyExpandLabel}
-          className="history-toggle"
-          onClick={onToggle}
-          type="button"
-        >
-          <ToggleIcon size={17} strokeWidth={1.8} aria-hidden="true" />
-        </button>
+        <div className="sidebar-actions" aria-label={uiText.sidebarActionsLabel}>
+          {actions.map((action) => {
+            const ActionIcon = action.icon;
+
+            return (
+              <button
+                aria-label={action.label}
+                aria-pressed={action.isPressed}
+                className={
+                  action.isActive ? "sidebar-action is-active" : "sidebar-action"
+                }
+                key={action.id}
+                onClick={action.onClick}
+                title={action.label}
+                type="button"
+              >
+                <ActionIcon size={16} strokeWidth={1.5} aria-hidden="true" />
+              </button>
+            );
+          })}
+          <button
+            aria-expanded={isOpen}
+            aria-label={isOpen ? uiText.historyCollapseLabel : uiText.historyExpandLabel}
+            className="history-toggle"
+            onClick={onToggle}
+            type="button"
+          >
+            <ToggleIcon size={17} strokeWidth={1.8} aria-hidden="true" />
+          </button>
+        </div>
       </div>
       <ol className="history-list" aria-hidden={!isOpen} ref={listRef}>
         {history.map((turn, index) => (
