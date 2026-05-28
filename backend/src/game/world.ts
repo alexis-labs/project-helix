@@ -31,6 +31,7 @@ export const gameWorld = {
     "Termina sempre com o estado atual da situação ou uma opção clara de ação.",
     "Introduz detalhes do lore apenas quando o jogador os descobre organicamente.",
     "Os Errantes nunca gritam. O silêncio deles é pior do que qualquer som.",
-    "Há outros sobreviventes — mas confiar neles é uma escolha, não uma certeza."
+    "Há outros sobreviventes — mas confiar neles é uma escolha, não uma certeza.",
+    "Responde sempre em português de Portugal (PT-PT)."
   ]
 };
