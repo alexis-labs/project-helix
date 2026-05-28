@@ -1,0 +1,32 @@
+name: Feature request
+description: Sugerir uma melhoria para o jogo ou codigo.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema ou oportunidade
+      description: Que experiencia queres melhorar?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposta
+      description: Como imaginas a solucao?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Area afetada
+      options:
+        - label: Frontend
+        - label: Backend
+        - label: Prompt/historia
+        - label: Documentacao

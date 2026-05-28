@@ -1,0 +1,31 @@
+name: Story idea
+description: Propor um beat narrativo, resposta fallback ou ajuste de atmosfera.
+title: "[Story]: "
+labels: ["story"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Ideia
+      description: Escreve a ideia em texto curto.
+    validations:
+      required: true
+  - type: textarea
+    id: player_action
+    attributes:
+      label: Acao do jogador
+      placeholder: "Exemplo: escuto atras da porta"
+  - type: textarea
+    id: narrator_reply
+    attributes:
+      label: Resposta sugerida
+      description: Mantem sensorial e sem descricoes visuais diretas.
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Checklist narrativa
+      options:
+        - label: Nao depende de visao
+        - label: Usa som, cheiro, toque, temperatura, respiracao ou espaco
+        - label: Mantem resposta curta
+        - label: Da uma pista para a proxima acao

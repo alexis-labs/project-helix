@@ -1,45 +1,48 @@
 # Blindfold
 
-Blindfold e um MVP de jogo web de terror psicologico em texto. O jogador acorda vendado numa casa abandonada e interage escrevendo perguntas ou acoes livres.
+Blindfold e um MVP web de terror psicologico interativo em texto.
 
-## Estrutura
+O jogador acorda vendado numa casa abandonada. Nao ve nada. So pode perguntar, ouvir, tocar, chamar, seguir sons e tentar perceber onde esta. O narrador responde com texto curto, tenso e sensorial.
 
-```txt
-/frontend
-/backend
-README.md
-.env.example
+## Estado do projeto
+
+MVP jogavel em browser.
+
+- Frontend: React, Vite, TypeScript
+- Backend: Node.js, Express, TypeScript
+- LLM: OpenAI API via `.env`
+- Fallback local: permite testar o jogo sem chave de API
+
+## Demo local
+
+Corre em dois terminais:
+
+```bash
+npm run dev:backend
+npm run dev:frontend
 ```
 
-## Ficheiros editaveis
+Depois abre o URL indicado pelo Vite, normalmente:
 
-- Prompt do narrador: `backend/src/game/systemPrompt.ts`
-- Respostas fallback e beats da historia: `backend/src/game/story.ts`
-- Texto inicial do jogador: `frontend/src/content/story.ts`
-- Textos fixos da interface: `frontend/src/content/uiText.ts`
-- Chamada ao endpoint do jogo: `frontend/src/api/play.ts`
-- Componentes da UI: `frontend/src/components/`
+```txt
+http://localhost:5173
+```
 
-Assim podes mudar prompt, historia ou UI sem abrir os ficheiros principais do servidor ou do ponto de entrada React.
+Se a porta estiver ocupada, o Vite escolhe outra e mostra no terminal.
 
 ## Requisitos
 
-- Node.js 20+
-- Uma chave de API no `.env` para usar o LLM
+- Node.js 22 recomendado
+- npm
+- Chave OpenAI opcional para respostas LLM reais
 
-## Configuracao
+## Instalacao
 
 ```bash
-cp .env.example .env
+npm run install:all
 ```
 
-Preenche `OPENAI_API_KEY` no ficheiro `.env`.
-
-O backend tambem tem um fallback local curto para o MVP continuar jogavel durante desenvolvimento quando a chave nao estiver definida.
-
-Opcionalmente, define `VITE_API_URL` no frontend se o backend nao estiver em `http://localhost:3001`.
-
-## Instalar
+Ou manualmente:
 
 ```bash
 cd backend
@@ -49,25 +52,88 @@ cd ../frontend
 npm install
 ```
 
-## Correr em desenvolvimento
+## Configuracao
 
-Terminal 1:
-
-```bash
-cd backend
-npm run dev
-```
-
-Terminal 2:
+Backend:
 
 ```bash
-cd frontend
-npm run dev
+cp .env.example .env
 ```
 
-Abre `http://localhost:5173`.
+Edita `.env`:
 
-Se a porta 5173 estiver ocupada, o Vite indica outra porta no terminal.
+```txt
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4.1-mini
+PORT=3001
+```
+
+Deixa `OPENAI_API_KEY` vazio para usar o fallback local durante desenvolvimento.
+
+Frontend, apenas se o backend nao estiver em `http://localhost:3001`:
+
+```bash
+cp frontend/.env.example frontend/.env
+```
+
+```txt
+VITE_API_URL=http://localhost:3001
+```
+
+## Scripts
+
+Na raiz do projeto:
+
+```bash
+npm run install:all
+npm run build
+npm run dev:backend
+npm run dev:frontend
+```
+
+Tambem podes correr scripts diretamente:
+
+```bash
+npm --prefix backend run build
+npm --prefix frontend run build
+```
+
+## Estrutura
+
+```txt
+.
+|-- backend
+|   `-- src
+|       |-- game
+|       |   |-- story.ts
+|       |   |-- systemPrompt.ts
+|       |   `-- types.ts
+|       `-- server.ts
+|-- frontend
+|   `-- src
+|       |-- api
+|       |-- components
+|       |-- content
+|       |-- main.tsx
+|       `-- styles.css
+|-- .github
+|   |-- ISSUE_TEMPLATE
+|   `-- workflows
+|-- CONTRIBUTING.md
+|-- CODE_OF_CONDUCT.md
+|-- SECURITY.md
+`-- README.md
+```
+
+## Onde editar
+
+- Prompt do narrador: `backend/src/game/systemPrompt.ts`
+- Respostas fallback e beats da historia: `backend/src/game/story.ts`
+- Texto inicial e mensagens de estado: `frontend/src/content/story.ts`
+- Textos fixos da interface: `frontend/src/content/uiText.ts`
+- Chamada ao endpoint: `frontend/src/api/play.ts`
+- Componentes da UI: `frontend/src/components/`
+- Estilos globais: `frontend/src/styles.css`
 
 ## API
 
@@ -90,6 +156,58 @@ Resposta:
 }
 ```
 
-## Prompt do jogo
+## Regras narrativas
 
-O backend usa um system prompt em portugues para manter a historia curta, coerente e sensorial: som, cheiro, toque, temperatura, respiracao e sensacao espacial, sem descrever imagens diretamente.
+Blindfold funciona melhor quando a escrita respeita estas regras:
+
+- O jogador nao consegue ver.
+- Nao descrevas imagens diretamente.
+- Usa som, cheiro, toque, temperatura, respiracao e sensacao espacial.
+- Mantem respostas curtas.
+- Nao expliques regras ao jogador.
+- Nao digas que o narrador e uma IA.
+- Cria tensao aos poucos.
+- Da sempre uma pista pequena para a proxima acao.
+
+## Como contribuir
+
+Le [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Contribuicoes bem-vindas:
+
+- Bugs pequenos e reproduziveis.
+- Melhorias de acessibilidade.
+- Beats narrativos sensoriais.
+- Polimento visual.
+- Documentacao para novos contribuidores.
+- Melhorias de prompts e fallback local.
+
+Antes de abrir PR:
+
+```bash
+npm run build
+```
+
+## GitHub community
+
+Este repo inclui:
+
+- Templates de bug, feature e story idea.
+- Template de pull request.
+- GitHub Actions para build de backend e frontend.
+- Dependabot semanal para dependencias npm.
+- Codigo de conduta, suporte e seguranca.
+
+## Roadmap curto
+
+- Melhor persistencia de estado narrativo.
+- Mais beats fallback sem LLM.
+- Modo de debug para comparar prompt, historico e resposta.
+- Testes automatizados para API e componentes principais.
+- Melhor experiencia mobile.
+
+## Licenca
+
+Licenca ainda por definir.
+
+Antes de aceitar contribuicoes externas em escala, escolhe uma licenca open source e adiciona um ficheiro `LICENSE`.
