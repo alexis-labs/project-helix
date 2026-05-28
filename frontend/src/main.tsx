@@ -1,8 +1,7 @@
-import { StrictMode } from "react";
-import { useState, type FormEvent } from "react";
+import { StrictMode, useState, type FormEvent } from "react";
 import { createRoot } from "react-dom/client";
 import { SendHorizontal, Volume2 } from "lucide-react";
-import "./styles.css";
+import "../src/styles.css";
 
 type Turn = {
   role: "player" | "narrator";
@@ -13,7 +12,7 @@ const opening =
   "Acordas no escuro. O tecido cobre-te os olhos, húmido e áspero. O chão está frio debaixo dos dedos. Algures à tua frente, uma gota cai devagar. Depois outra. Há uma porta perto. Consegues ouvir a madeira respirar.";
 
 function App() {
-  const [currentReply, setCurrentReply] = useState<string>(opening);
+  const [currentReply, setCurrentReply] = useState(opening);
   const [history, setHistory] = useState<Turn[]>([
     { role: "narrator", content: opening }
   ]);
@@ -38,7 +37,8 @@ function App() {
     setError("");
 
     try {
-      const response = await fetch("/api/play", {
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3001";
+      const response = await fetch(`${apiUrl}/api/play`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -124,4 +124,8 @@ function App() {
   );
 }
 
-export default App;
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+);

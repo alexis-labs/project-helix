@@ -26,6 +26,8 @@ Preenche `OPENAI_API_KEY` no ficheiro `.env`.
 
 O backend tambem tem um fallback local curto para o MVP continuar jogavel durante desenvolvimento quando a chave nao estiver definida.
 
+Opcionalmente, define `VITE_API_URL` no frontend se o backend nao estiver em `http://localhost:3001`.
+
 ## Instalar
 
 ```bash
@@ -53,6 +55,8 @@ npm run dev
 ```
 
 Abre `http://localhost:5173`.
+
+Se a porta 5173 estiver ocupada, o Vite indica outra porta no terminal.
 
 ## API
 
