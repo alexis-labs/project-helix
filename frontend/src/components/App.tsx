@@ -15,6 +15,7 @@ import { NarrationPanel } from "./NarrationPanel";
 export function App() {
   const { isAmbientOn, toggleAmbient } = useAmbientAudio();
   const [currentReply, setCurrentReply] = useState(openingNarration);
+  const [currentAction, setCurrentAction] = useState("");
   const [history, setHistory] = useState<Turn[]>([
     { role: "narrator", content: openingNarration }
   ]);
@@ -34,6 +35,7 @@ export function App() {
     const playerTurn: Turn = { role: "player", content: trimmed };
     const nextHistory = [...history, playerTurn];
 
+    setCurrentAction(trimmed);
     setHistory(nextHistory);
     setMessage("");
     setIsLoading(true);
@@ -60,7 +62,11 @@ export function App() {
     <main className={isHistoryOpen ? "game-shell" : "game-shell is-history-collapsed"}>
       <section className="play-area" aria-label={uiText.mainAriaLabel}>
         <GameHeader isAmbientOn={isAmbientOn} onToggleAmbient={toggleAmbient} />
-        <NarrationPanel currentReply={currentReply} isLoading={isLoading} />
+        <NarrationPanel
+          currentAction={currentAction}
+          currentReply={currentReply}
+          isLoading={isLoading}
+        />
         <CommandInput
           isLoading={isLoading}
           message={message}

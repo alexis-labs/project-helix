@@ -3,11 +3,16 @@ import { loadingNarration } from "../content/story";
 import { uiText } from "../content/uiText";
 
 type NarrationPanelProps = {
+  currentAction: string;
   currentReply: string;
   isLoading: boolean;
 };
 
-export function NarrationPanel({ currentReply, isLoading }: NarrationPanelProps) {
+export function NarrationPanel({
+  currentAction,
+  currentReply,
+  isLoading
+}: NarrationPanelProps) {
   const targetText = isLoading ? loadingNarration : currentReply;
   const shouldReduceMotion = useMemo(
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -38,6 +43,12 @@ export function NarrationPanel({ currentReply, isLoading }: NarrationPanelProps)
 
   return (
     <article className="narration-panel" aria-live="polite">
+      {currentAction ? (
+        <div className="current-action">
+          <span>{uiText.currentActionLabel}</span>
+          <p>{currentAction}</p>
+        </div>
+      ) : null}
       <span className="speaker">{uiText.narratorLabel}</span>
       <p aria-label={targetText} className="typewriter-text">
         {displayedText}

@@ -182,6 +182,31 @@ button {
   display: none;
 }
 
+.narration-panel .current-action {
+  max-width: min(64ch, 100%);
+  margin-bottom: clamp(18px, 2.6vh, 28px);
+  padding-bottom: clamp(18px, 2.6vh, 28px);
+  border-bottom: 1px solid var(--border);
+}
+
+.narration-panel .current-action span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.narration-panel .current-action p {
+  max-width: 100%;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
 .speaker {
   display: inline-flex;
   gap: 8px;
