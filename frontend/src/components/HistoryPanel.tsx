@@ -1,16 +1,18 @@
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { uiText } from "../content/uiText";
-import type { SidebarAction, Turn } from "../types";
+import { AttributeBars } from "./AttributeBars";
+import type { GameAttributes, SidebarAction, Turn } from "../types";
 
 type HistoryPanelProps = {
   actions: SidebarAction[];
+  attributes: GameAttributes;
   history: Turn[];
   isOpen: boolean;
   onToggle: () => void;
 };
 
-export function HistoryPanel({ actions, history, isOpen, onToggle }: HistoryPanelProps) {
+export function HistoryPanel({ actions, attributes, history, isOpen, onToggle }: HistoryPanelProps) {
   const listRef = useRef<HTMLOListElement>(null);
   const ToggleIcon = isOpen ? PanelRightClose : PanelRightOpen;
 
@@ -75,6 +77,9 @@ export function HistoryPanel({ actions, history, isOpen, onToggle }: HistoryPane
           </li>
         ))}
       </ol>
+      <div className="sidebar-attributes">
+        <AttributeBars {...attributes} />
+      </div>
     </aside>
   );
 }

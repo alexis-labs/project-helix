@@ -7,11 +7,50 @@ import {
   openingNarration
 } from "../content/story";
 import { uiText } from "../content/uiText";
-import type { SidebarAction, Turn } from "../types";
+import type { SidebarAction, Turn, GameAttributes } from "../types";
 import { CommandInput } from "./CommandInput";
 import { GameHeader } from "./GameHeader";
 import { HistoryPanel } from "./HistoryPanel";
 import { NarrationPanel } from "./NarrationPanel";
+
+const INITIAL_ATTRIBUTES: GameAttributes = {
+  fear: 20,
+  injuries: 0,
+  hunger: 10,
+  exhaustion: 15
+};
+
+function extractAttributes(narratorResponse: string): GameAttributes | null {
+  const lines = narratorResponse.split("\n");
+  const attributes: Partial<GameAttributes> = {};
+
+  for (const line of lines) {
+    if (line.includes("MEDO:")) {
+      const match = line.match(/MEDO:\s*(\d+)/);
+      if (match) attributes.fear = parseInt(match[1], 10);
+    } else if (line.includes("FERIMENTOS:")) {
+      const match = line.match(/FERIMENTOS:\s*(\d+)/);
+      if (match) attributes.injuries = parseInt(match[1], 10);
+    } else if (line.includes("FOME:")) {
+      const match = line.match(/FOME:\s*(\d+)/);
+      if (match) attributes.hunger = parseInt(match[1], 10);
+    } else if (line.includes("EXAUSTÃO:")) {
+      const match = line.match(/EXAUSTÃO:\s*(\d+)/);
+      if (match) attributes.exhaustion = parseInt(match[1], 10);
+    }
+  }
+
+  if (
+    attributes.fear !== undefined &&
+    attributes.injuries !== undefined &&
+    attributes.hunger !== undefined &&
+    attributes.exhaustion !== undefined
+  ) {
+    return attributes as GameAttributes;
+  }
+
+  return null;
+}
 
 export function App() {
   const { isAmbientOn, toggleAmbient } = useAmbientAudio();
@@ -29,6 +68,7 @@ export function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [isHistoryOpen, setIsHistoryOpen] = useState(true);
+  const [attributes, setAttributes] = useState<GameAttributes>(INITIAL_ATTRIBUTES);
   const isLightTheme = theme === "light";
   const sidebarActions: SidebarAction[] = [
     {
@@ -77,6 +117,11 @@ export function App() {
 
       setCurrentReply(reply);
       setHistory((previous) => [...previous, narratorTurn]);
+
+      const extractedAttributes = extractAttributes(reply);
+      if (extractedAttributes) {
+        setAttributes(extractedAttributes);
+      }
     } catch (caughtError) {
       const fallback =
         caughtError instanceof Error ? caughtError.message : uiText.connectionError;
@@ -108,6 +153,7 @@ export function App() {
 
       <HistoryPanel
         actions={sidebarActions}
+        attributes={attributes}
         history={history}
         isOpen={isHistoryOpen}
         onToggle={() => setIsHistoryOpen((current) => !current)}

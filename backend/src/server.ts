@@ -2,7 +2,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import OpenAI from "openai";
-import { fallbackNarration, llmConfig, systemPrompt } from "./game/llmConfig.ts";
+import { llmConfig, systemPrompt } from "./game/llmConfig.ts";
 import type { ClientTurn } from "./game/types.ts";
 
 dotenv.config({ path: process.env.DOTENV_CONFIG_PATH || "../.env" });
@@ -12,6 +12,8 @@ const port = Number(process.env.PORT || 3001);
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null;
+
+const FALLBACK_REPLY = "O silêncio envolve-te. A escuridão continua.";
 
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
@@ -32,18 +34,18 @@ app.post("/api/play", async (request, response) => {
   try {
     const reply = openai
       ? await narrateWithOpenAI(message, history)
-      : fallbackNarration(history.length);
+      : FALLBACK_REPLY;
 
     response.json({ reply });
   } catch (error) {
     console.error("Narration error:", error);
-    response.json({ reply: fallbackNarration(history.length) });
+    response.json({ reply: FALLBACK_REPLY });
   }
 });
 
 async function narrateWithOpenAI(message: string, history: ClientTurn[]) {
   if (!openai) {
-    return fallbackNarration(history.length);
+    return FALLBACK_REPLY;
   }
 
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
@@ -64,7 +66,7 @@ async function narrateWithOpenAI(message: string, history: ClientTurn[]) {
 
   return (
     completion.choices[0]?.message?.content?.trim() ||
-    fallbackNarration(history.length)
+    FALLBACK_REPLY
   );
 }
 

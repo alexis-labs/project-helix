@@ -571,6 +571,61 @@ button {
   overflow-wrap: break-word;
 }
 
+/* ─── Attribute Bars ─── */
+
+.attribute-bars {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-auto-rows: auto;
+  gap: 10px 8px;
+  padding: 0;
+  border: none;
+  align-items: center;
+}
+
+.attribute-bar-label {
+  display: block;
+  color: #8b7d72;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: right;
+}
+
+.bar-container {
+  position: relative;
+  width: 70px;
+  height: 6px;
+  border-radius: 3px;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  overflow: hidden;
+}
+
+.bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease-out;
+}
+
+.bar-value {
+  color: #7f7f7f;
+  font-size: 0.55rem;
+  font-weight: 600;
+  min-width: 20px;
+  text-align: right;
+}
+
+.sidebar-attributes {
+  padding: 12px 14px;
+  border-top: 1px solid #2a2a2a;
+  background: #0f0f0f;
+}
+
 /* ─── Responsive ─── */
 
 @media (max-width: 1024px) {

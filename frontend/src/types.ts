@@ -13,3 +13,10 @@ export type SidebarAction = {
   isPressed?: boolean;
   onClick: () => void;
 };
+
+export type GameAttributes = {
+  fear: number;
+  injuries: number;
+  hunger: number;
+  exhaustion: number;
+};
