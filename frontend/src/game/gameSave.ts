@@ -1,8 +1,15 @@
 import type { ActiveGameState } from "./initialState";
-import type { GameAttributes, GameStatus, Turn } from "../types";
+import { createInitialMemory } from "./adventureMemory";
+import type {
+  AdventureMemory,
+  GameAttributes,
+  GameStatus,
+  MemoryVariable,
+  Turn
+} from "../types";
 
 const STORAGE_KEY = "blindfold-save";
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2;
 
 export type SavedGamePayload = {
   version: number;
@@ -12,6 +19,7 @@ export type SavedGamePayload = {
   history: Turn[];
   attributes: GameAttributes;
   status: GameStatus;
+  memory?: AdventureMemory;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -58,11 +66,40 @@ function isStatus(value: unknown): value is GameStatus {
   );
 }
 
+function isMemoryVariable(value: unknown): value is MemoryVariable {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const source = value.source;
+
+  return (
+    typeof value.key === "string" &&
+    typeof value.value === "string" &&
+    typeof value.description === "string" &&
+    (source === "jogador" || source === "externo" || source === "descoberta")
+  );
+}
+
+function isMemory(value: unknown): value is AdventureMemory {
+  if (!isRecord(value) || !isRecord(value.variables)) {
+    return false;
+  }
+
+  return Object.values(value.variables).every(isMemoryVariable);
+}
+
 function parseSavedGame(raw: string): SavedGamePayload | null {
   try {
     const parsed: unknown = JSON.parse(raw);
 
-    if (!isRecord(parsed) || parsed.version !== SAVE_VERSION) {
+    if (!isRecord(parsed)) {
+      return null;
+    }
+
+    const version = parsed.version;
+
+    if (version !== 1 && version !== SAVE_VERSION) {
       return null;
     }
 
@@ -75,6 +112,10 @@ function parseSavedGame(raw: string): SavedGamePayload | null {
       !isAttributes(parsed.attributes) ||
       !isStatus(parsed.status)
     ) {
+      return null;
+    }
+
+    if (version === SAVE_VERSION && parsed.memory !== undefined && !isMemory(parsed.memory)) {
       return null;
     }
 
@@ -111,7 +152,8 @@ export function loadSavedGame(): ActiveGameState | null {
     status: {
       location: saved.status.location,
       inventory: [...saved.status.inventory]
-    }
+    },
+    memory: saved.memory ?? createInitialMemory()
   };
 }
 
@@ -123,7 +165,8 @@ export function saveGame(state: ActiveGameState) {
     currentAction: state.currentAction,
     history: state.history,
     attributes: state.attributes,
-    status: state.status
+    status: state.status,
+    memory: state.memory
   };
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));

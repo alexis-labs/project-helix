@@ -7,9 +7,9 @@ import {
 } from "react";
 
 const STORAGE_KEY = "blindfold-sidebar-width";
-const DEFAULT_WIDTH = 380;
-const MIN_WIDTH = 280;
-const MAX_WIDTH = 560;
+const DEFAULT_WIDTH = 300;
+const MIN_WIDTH = 240;
+const MAX_WIDTH = 400;
 
 function readStoredWidth() {
   const saved = window.localStorage.getItem(STORAGE_KEY);

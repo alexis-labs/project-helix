@@ -3,12 +3,12 @@ import { fileURLToPath } from "node:url";
 
 import dotenv from "dotenv";
 
-const repoEnvPath = path.resolve(
+const envPath = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../../.env"
 );
 
-dotenv.config({ path: process.env.DOTENV_CONFIG_PATH || repoEnvPath });
+dotenv.config({ path: envPath });
 
 export const systemPrompt = `# SISTEMA - NARRADOR INTERATIVO
 
@@ -305,6 +305,20 @@ Ou talvez já seja tarde demais.
 
 ---
 
+# FIM DE JOGO POR ATRIBUTOS
+
+Se MEDO, FERIMENTOS, FOME ou EXAUSTÃO atingirem 100/100, a aventura termina nesse turno.
+
+Narra de forma clara e definitiva a consequência:
+- MEDO 100 → colapso psicológico irreversível
+- FERIMENTOS 100 → morte
+- FOME 100 → inanição
+- EXAUSTÃO 100 → colapso por exaustão total
+
+Não convides o jogador a continuar depois disso.
+
+---
+
 # EVENTOS QUE CAUSAM FERIMENTOS
 
 ## +5 FERIMENTOS
@@ -430,8 +444,27 @@ Fim do Ato 1.
 # FORMATO OBRIGATÓRIO DE RESPOSTA
 
 Primeiro escreve apenas a narração para o jogador.
-Depois, no final, inclui sempre o bloco técnico abaixo para a interface atualizar o estado.
-Este bloco não faz parte da narração e não deve ser explicado ao jogador.
+Depois, no final, inclui sempre os blocos técnicos abaixo para a interface atualizar o estado.
+Estes blocos não fazem parte da narração e não devem ser explicados ao jogador.
+
+MEMORIA:
+Cada linha é uma variável persistente da aventura no formato:
+- chave: valor | fonte | descrição curta
+
+Regras do bloco MEMORIA:
+- Inclui SEMPRE a lista completa de variáveis relevantes neste turno.
+- fonte deve ser uma de: jogador, externo, descoberta
+- jogador → ações ou intenções do jogador
+- externo → eventos do mundo, NPCs, ambiente, acidentes
+- descoberta → factos ou segredos que o jogador passou a saber
+- Altera o valor quando algo muda (ex.: rumor_confirmado → rumor_desmentido).
+- Remove variáveis obsoletas omitindo-as da lista.
+- Usa chaves em minúsculas com underscores (ex.: ultima_acao, npc_marta).
+
+Exemplo:
+- ultima_acao: explorar_corredor | jogador | Explorou o corredor escuro
+- rumor_radio: ouvido | externo | Discussão nocturna sobre transmissões
+- mae_paradeiro: desconhecido | descoberta | Último contacto na evacuação
 
 ESTADO_UI:
 
@@ -452,6 +485,39 @@ OBJETIVO ATUAL:
 (objetivo atual)
 
 Depois aguarda pela próxima ação do jogador.`;
+
+export const attributeLabels: Record<string, string> = {
+  fear: "MEDO",
+  injuries: "FERIMENTOS",
+  hunger: "FOME",
+  exhaustion: "EXAUSTÃO"
+};
+
+export const attributeEndings: Record<string, string> = {
+  fear: "colapso psicológico irreversível",
+  injuries: "morte por ferimentos graves",
+  hunger: "inanição",
+  exhaustion: "exaustão total e incapacitação"
+};
+
+export function buildSummaryPrompt(cause: string) {
+  const label = attributeLabels[cause] ?? cause.toUpperCase();
+  const ending = attributeEndings[cause] ?? "fim da jornada";
+
+  return `# RESUMO DE FIM DE JOGO
+
+O jogador atingiu o máximo de ${label} (100/100).
+A aventura termina por ${ending}.
+
+Escreve um resumo final da história vivida até aqui:
+- 3 a 5 parágrafos curtos, em português europeu.
+- Segunda pessoa ("tu").
+- Tom sombrio, emocional e conclusivo.
+- Resume os momentos-chave, escolhas e descobertas da aventura.
+- Explica como a jornada chegou ao fim por causa de ${label.toLowerCase()}.
+- Não incluas blocos técnicos, listas de atributos nem instruções para continuar a jogar.
+- Este é o fim definitivo da história.`;
+}
 
 const readEnv = (name: string) => {
   const value = process.env[name]?.trim();
@@ -482,7 +548,8 @@ export const llmConfig = {
         : undefined),
   model: readEnv("OPENAI_MODEL") || defaultModel,
   temperature: 0.85,
-  maxCompletionTokens: Number(readEnv("LLM_MAX_COMPLETION_TOKENS") || 1024)
+  maxCompletionTokens: Number(readEnv("LLM_MAX_COMPLETION_TOKENS") || 1024),
+  contextWindowTokens: Number(readEnv("LLM_CONTEXT_WINDOW") || 128_000)
 };
 
 export function buildCompletionParams() {

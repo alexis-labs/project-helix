@@ -1,5 +1,6 @@
 import { openingNarration } from "../content/story";
-import type { GameAttributes, GameStatus, Turn } from "../types";
+import type { AdventureMemory, GameAttributes, GameStatus, Turn } from "../types";
+import { createInitialMemory } from "./adventureMemory";
 
 export const INITIAL_ATTRIBUTES: GameAttributes = {
   fear: 20,
@@ -23,6 +24,7 @@ export type ActiveGameState = {
   history: Turn[];
   attributes: GameAttributes;
   status: GameStatus;
+  memory: AdventureMemory;
 };
 
 export function createNewGameState(): ActiveGameState {
@@ -34,6 +36,7 @@ export function createNewGameState(): ActiveGameState {
     status: {
       location: INITIAL_STATUS.location,
       inventory: [...INITIAL_STATUS.inventory]
-    }
+    },
+    memory: createInitialMemory()
   };
 }

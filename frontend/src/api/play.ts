@@ -1,10 +1,23 @@
 import { emptyNarrationFallback } from "../content/story";
 import { uiText } from "../content/uiText";
-import type { Turn } from "../types";
+import { formatMemoryForApi } from "../game/adventureMemory";
+import type { AdventureMemory, Turn } from "../types";
+
+export type PlayUsage = {
+  promptTokens: number;
+  totalTokens: number;
+  contextLimit: number;
+};
 
 type PlayResponse = {
   reply?: string;
+  usage?: PlayUsage;
   error?: string;
+};
+
+export type NarrationResult = {
+  reply: string;
+  usage: PlayUsage | null;
 };
 
 async function readPlayResponse(response: Response): Promise<PlayResponse> {
@@ -37,7 +50,11 @@ function resolveApiBase() {
   return "http://localhost:3001";
 }
 
-export async function requestNarration(message: string, history: Turn[]) {
+export async function requestNarration(
+  message: string,
+  history: Turn[],
+  memory: AdventureMemory
+) {
   const apiBase = resolveApiBase();
   let response: Response;
 
@@ -47,6 +64,7 @@ export async function requestNarration(message: string, history: Turn[]) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message,
+        memory: formatMemoryForApi(memory),
         history: history.slice(-12).map((turn) => ({
           role: turn.role,
           content: turn.contextContent || turn.content
@@ -63,5 +81,20 @@ export async function requestNarration(message: string, history: Turn[]) {
     throw new Error(data.error?.trim() || uiText.requestError);
   }
 
-  return data.reply?.trim() || emptyNarrationFallback;
+  const reply = data.reply?.trim() || emptyNarrationFallback;
+  const usage = data.usage;
+
+  return {
+    reply,
+    usage:
+      usage &&
+      typeof usage.promptTokens === "number" &&
+      typeof usage.contextLimit === "number"
+        ? {
+            promptTokens: usage.promptTokens,
+            totalTokens: usage.totalTokens ?? usage.promptTokens,
+            contextLimit: usage.contextLimit
+          }
+        : null
+  };
 }

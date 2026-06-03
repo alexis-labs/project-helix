@@ -26,3 +26,16 @@ export type GameStatus = {
   location: string;
   inventory: string[];
 };
+
+export type MemorySource = "jogador" | "externo" | "descoberta";
+
+export type MemoryVariable = {
+  key: string;
+  value: string;
+  source: MemorySource;
+  description: string;
+};
+
+export type AdventureMemory = {
+  variables: Record<string, MemoryVariable>;
+};

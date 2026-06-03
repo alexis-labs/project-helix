@@ -1,6 +1,8 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { Moon, Sun, Volume2 } from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Brain, Moon, Sun, Volume2 } from "lucide-react";
+import { fetchContextLimits } from "../api/health";
 import { requestNarration } from "../api/play";
+import { requestStorySummary } from "../api/summary";
 import { useAmbientAudio } from "../audio/useAmbientAudio";
 import { useEreaderTone } from "../hooks/useEreaderTone";
 import { useSidebarResize } from "../hooks/useSidebarResize";
@@ -12,22 +14,43 @@ import {
 } from "../game/gameSave";
 import { createNewGameState } from "../game/initialState";
 import {
+  mergeMemoryFromResponse,
+  recordPlayerActionMemory
+} from "../game/adventureMemory";
+import {
+  estimateNextRequestTokens,
+  getFallbackContextLimits,
+  toContextPercent,
+  type ContextLimits
+} from "../game/contextTokens";
+import {
+  clampAttributes,
+  getCriticalAttribute,
+  hasAttributeAtMax,
+  type CriticalAttribute
+} from "../game/attributes";
+import { buildDiaryEntries, filterDiaryEntries } from "../game/diaryEntries";
+import {
   connectionFailureNarration,
   openingNarration
 } from "../content/story";
 import { uiText } from "../content/uiText";
 import type { ActiveGameState } from "../game/initialState";
-import type { GameAttributes, GameStatus, SidebarAction, Turn } from "../types";
+import type { AdventureMemory, GameAttributes, GameStatus, SidebarAction, Turn } from "../types";
 import { CommandInput } from "./CommandInput";
 import { GameHeader } from "./GameHeader";
+import { GameOverPanel } from "./GameOverPanel";
 import { HistoryPanel } from "./HistoryPanel";
 import { MainMenu } from "./MainMenu";
+import { MemoryPanel } from "./MemoryPanel";
 import { NarrationPanel } from "./NarrationPanel";
+import { StorySearchBar } from "./StorySearchBar";
+import { StorySearchResults } from "./StorySearchResults";
 
 function stripUiStateBlock(narratorResponse: string) {
   const lines = narratorResponse.split("\n");
   const stateBlockStart = lines.findIndex((line) =>
-    /^(ESTADO_UI:|MEDO:)/i.test(line.trim())
+    /^(ESTADO_UI:|MEMORIA:|MEDO:)/i.test(line.trim())
   );
 
   if (stateBlockStart === -1) {
@@ -170,9 +193,24 @@ export function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [isHistoryOpen, setIsHistoryOpen] = useState(true);
+  const [storySearchQuery, setStorySearchQuery] = useState("");
+  const [isMemoryOpen, setIsMemoryOpen] = useState(false);
   const [isEreaderToneOpen, setIsEreaderToneOpen] = useState(false);
   const [attributes, setAttributes] = useState(createNewGameState().attributes);
   const [status, setStatus] = useState(createNewGameState().status);
+  const [memory, setMemory] = useState<AdventureMemory>(createNewGameState().memory);
+  const [contextLimits, setContextLimits] = useState<ContextLimits>(
+    getFallbackContextLimits
+  );
+  const [confirmedContextUsage, setConfirmedContextUsage] = useState<{
+    promptTokens: number;
+    historyLength: number;
+  } | null>(null);
+  const [gameOver, setGameOver] = useState<{
+    cause: CriticalAttribute;
+    summary: string;
+    isSummaryLoading: boolean;
+  } | null>(null);
   const isLightTheme = theme === "light";
   const { isResizing, shellStyle, sidebarWidth, startResize } =
     useSidebarResize(isHistoryOpen);
@@ -184,6 +222,14 @@ export function App() {
       isPressed: isLightTheme,
       onClick: () =>
         setTheme((currentTheme) => (currentTheme === "light" ? "dark" : "light"))
+    },
+    {
+      id: "memory",
+      label: uiText.memoryToggleLabel,
+      icon: Brain,
+      isActive: isMemoryOpen,
+      isPressed: isMemoryOpen,
+      onClick: () => setIsMemoryOpen((current) => !current)
     },
     {
       id: "ereader-tone",
@@ -216,15 +262,89 @@ export function App() {
     window.localStorage.setItem("blindfold-theme", theme);
   }, [theme]);
 
+  useEffect(() => {
+    if (screen !== "playing") {
+      return;
+    }
+
+    let cancelled = false;
+
+    void fetchContextLimits().then((limits) => {
+      if (!cancelled) {
+        setContextLimits(limits);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [screen]);
+
+  const estimatedContextTokens = useMemo(
+    () =>
+      estimateNextRequestTokens({
+        history,
+        memory,
+        draftMessage: message,
+        limits: contextLimits
+      }),
+    [history, memory, message, contextLimits]
+  );
+
+  const contextUsedTokens =
+    confirmedContextUsage &&
+    confirmedContextUsage.historyLength === history.length &&
+    !message.trim()
+      ? confirmedContextUsage.promptTokens
+      : estimatedContextTokens;
+
+  const contextPercent = toContextPercent(
+    contextUsedTokens,
+    contextLimits.contextWindowTokens
+  );
+
+  const diaryEntries = useMemo(() => buildDiaryEntries(history), [history]);
+  const filteredDiaryEntries = useMemo(
+    () =>
+      filterDiaryEntries(diaryEntries, storySearchQuery, {
+        player: uiText.playerLabel,
+        narrator: uiText.narratorLabel
+      }),
+    [diaryEntries, storySearchQuery]
+  );
+  const isStorySearchActive = storySearchQuery.trim().length > 0;
+
   function applyGameState(state: ActiveGameState) {
     setCurrentReply(state.currentReply);
     setCurrentAction(state.currentAction);
     setHistory(state.history);
     setAttributes(state.attributes);
     setStatus(state.status);
+    setMemory(state.memory);
     setMessage("");
     setError("");
     setIsLoading(false);
+    setGameOver(null);
+    setIsMemoryOpen(false);
+  }
+
+  async function triggerGameOver(
+    cause: CriticalAttribute,
+    completedHistory: Turn[],
+    nextMemory: AdventureMemory
+  ) {
+    setGameOver({ cause, summary: "", isSummaryLoading: true });
+    clearSavedGame();
+    setCanContinue(false);
+
+    const summary = await requestStorySummary(completedHistory, nextMemory, cause);
+    setGameOver({ cause, summary, isSummaryLoading: false });
+  }
+
+  function returnToMenu() {
+    setScreen("menu");
+    setGameOver(null);
+    setIsMemoryOpen(false);
   }
 
   function startNewGame() {
@@ -246,21 +366,33 @@ export function App() {
 
     applyGameState(saved);
     setScreen("playing");
+
+    const clampedAttributes = clampAttributes(saved.attributes);
+
+    if (hasAttributeAtMax(clampedAttributes)) {
+      const cause = getCriticalAttribute(clampedAttributes);
+
+      if (cause) {
+        void triggerGameOver(cause, saved.history, saved.memory);
+      }
+    }
   }
 
   async function submitAction(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = message.trim();
 
-    if (!trimmed || isLoading) {
+    if (!trimmed || isLoading || gameOver) {
       return;
     }
 
     const playerTurn: Turn = { role: "player", content: trimmed };
     const nextHistory = [...history, playerTurn];
+    const nextMemory = recordPlayerActionMemory(memory, trimmed);
 
     setCurrentAction(trimmed);
     setHistory(nextHistory);
+    setMemory(nextMemory);
     setMessage("");
     setIsLoading(true);
     setError("");
@@ -270,12 +402,13 @@ export function App() {
       currentAction: trimmed,
       history: nextHistory,
       attributes,
-      status
+      status,
+      memory: nextMemory
     });
     setCanContinue(true);
 
     try {
-      const reply = await requestNarration(trimmed, history);
+      const { reply, usage } = await requestNarration(trimmed, history, nextMemory);
       const visibleReply = stripUiStateBlock(reply) || reply;
       const narratorTurn: Turn = {
         role: "narrator",
@@ -288,10 +421,10 @@ export function App() {
       setHistory(completedHistory);
 
       const extractedAttributes = extractAttributes(reply);
-      const nextAttributes = extractedAttributes ?? attributes;
+      const nextAttributes = clampAttributes(extractedAttributes ?? attributes);
 
       if (extractedAttributes) {
-        setAttributes(extractedAttributes);
+        setAttributes(nextAttributes);
       }
 
       const extractedInventory = extractInventory(reply);
@@ -308,13 +441,39 @@ export function App() {
         setStatus(nextStatus);
       }
 
+      const nextMemoryFromReply = mergeMemoryFromResponse(nextMemory, reply);
+      setMemory(nextMemoryFromReply);
+
+      if (usage) {
+        setContextLimits((current) => ({
+          ...current,
+          contextWindowTokens: usage.contextLimit || current.contextWindowTokens
+        }));
+        setConfirmedContextUsage({
+          promptTokens: usage.promptTokens,
+          historyLength: completedHistory.length
+        });
+      }
+
       persistProgress({
         currentReply: visibleReply,
         currentAction: trimmed,
         history: completedHistory,
         attributes: nextAttributes,
-        status: nextStatus
+        status: nextStatus,
+        memory: nextMemoryFromReply
       });
+
+      if (hasAttributeAtMax(nextAttributes)) {
+        const cause = getCriticalAttribute(nextAttributes);
+
+        if (cause) {
+          await triggerGameOver(cause, completedHistory, nextMemoryFromReply);
+        }
+
+        return;
+      }
+
       setCanContinue(true);
     } catch (caughtError) {
       const fallback =
@@ -328,7 +487,8 @@ export function App() {
         currentAction: trimmed,
         history: nextHistory,
         attributes,
-        status
+        status,
+        memory: nextMemory
       });
     } finally {
       setIsLoading(false);
@@ -358,17 +518,44 @@ export function App() {
     >
       <section className="play-area" aria-label={uiText.mainAriaLabel}>
         <GameHeader />
-        <NarrationPanel
-          currentAction={currentAction}
-          currentReply={currentReply}
-          isLoading={isLoading}
+        <StorySearchBar
+          onQueryChange={setStorySearchQuery}
+          query={storySearchQuery}
+          resultCount={filteredDiaryEntries.length}
+          totalEntries={diaryEntries.length}
         />
-        <CommandInput
-          isLoading={isLoading}
-          message={message}
-          onMessageChange={setMessage}
-          onSubmit={submitAction}
-        />
+        {isMemoryOpen ? (
+          <MemoryPanel centered memory={memory} />
+        ) : isStorySearchActive ? (
+          <StorySearchResults history={history} query={storySearchQuery} />
+        ) : (
+          <div className="play-story-stack">
+            <NarrationPanel
+              currentAction={currentAction}
+              currentReply={currentReply}
+              isLoading={isLoading}
+            />
+            {gameOver ? (
+              <GameOverPanel
+                cause={gameOver.cause}
+                isLoading={gameOver.isSummaryLoading}
+                onReturnToMenu={returnToMenu}
+                summary={gameOver.summary}
+              />
+            ) : null}
+          </div>
+        )}
+        {!gameOver ? (
+          <CommandInput
+            contextLimitTokens={contextLimits.contextWindowTokens}
+            contextPercent={contextPercent}
+            contextUsedTokens={contextUsedTokens}
+            isLoading={isLoading}
+            message={message}
+            onMessageChange={setMessage}
+            onSubmit={submitAction}
+          />
+        ) : null}
         {error ? <p className="error-text">{error}</p> : null}
       </section>
 
@@ -376,8 +563,8 @@ export function App() {
         <div
           aria-label={uiText.sidebarResizeLabel}
           aria-orientation="vertical"
-          aria-valuemax={560}
-          aria-valuemin={280}
+          aria-valuemax={400}
+          aria-valuemin={240}
           aria-valuenow={sidebarWidth}
           className="sidebar-resize-handle"
           onPointerDown={startResize}
@@ -390,7 +577,6 @@ export function App() {
         actions={sidebarActions}
         attributes={attributes}
         ereaderTone={ereadTone}
-        history={history}
         isEreaderToneOpen={isEreaderToneOpen}
         isOpen={isHistoryOpen}
         onEreaderToneChange={setEreadTone}
