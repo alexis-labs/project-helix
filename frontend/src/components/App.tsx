@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Brain, Moon, Sun, Volume2 } from "lucide-react";
+import { BookOpen, Moon, Sun, Volume2 } from "lucide-react";
 import { fetchContextLimits } from "../api/health";
 import { requestNarration } from "../api/play";
 import { requestStorySummary } from "../api/summary";
@@ -195,7 +195,7 @@ export function App() {
   const [error, setError] = useState("");
   const [isHistoryOpen, setIsHistoryOpen] = useState(true);
   const [storySearchQuery, setStorySearchQuery] = useState("");
-  const [isMemoryOpen, setIsMemoryOpen] = useState(false);
+  const [isDiaryOpen, setIsDiaryOpen] = useState(false);
   const [isEreaderToneOpen, setIsEreaderToneOpen] = useState(false);
   const [attributes, setAttributes] = useState(createNewGameState().attributes);
   const [status, setStatus] = useState(createNewGameState().status);
@@ -225,12 +225,12 @@ export function App() {
         setTheme((currentTheme) => (currentTheme === "light" ? "dark" : "light"))
     },
     {
-      id: "memory",
-      label: uiText.memoryToggleLabel,
-      icon: Brain,
-      isActive: isMemoryOpen,
-      isPressed: isMemoryOpen,
-      onClick: () => setIsMemoryOpen((current) => !current)
+      id: "diary",
+      label: uiText.diaryToggleLabel,
+      icon: BookOpen,
+      isActive: isDiaryOpen,
+      isPressed: isDiaryOpen,
+      onClick: () => setIsDiaryOpen((current) => !current)
     },
     {
       id: "ereader-tone",
@@ -336,7 +336,7 @@ export function App() {
     setError("");
     setIsLoading(false);
     setGameOver(null);
-    setIsMemoryOpen(false);
+    setIsDiaryOpen(false);
   }
 
   async function triggerGameOver(
@@ -355,7 +355,7 @@ export function App() {
   function returnToMenu() {
     setScreen("menu");
     setGameOver(null);
-    setIsMemoryOpen(false);
+    setIsDiaryOpen(false);
   }
 
   function startNewGame() {
@@ -546,7 +546,7 @@ export function App() {
           resultCount={filteredDiaryEntries.length}
           totalEntries={diaryEntries.length}
         />
-        {isMemoryOpen ? (
+        {isDiaryOpen ? (
           <MemoryPanel memory={memory} />
         ) : isStorySearchActive ? (
           <StorySearchResults history={history} query={storySearchQuery} />

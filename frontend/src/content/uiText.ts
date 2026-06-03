@@ -82,16 +82,13 @@ export const uiText = {
   connectionError: "A ligação falhou. Só ouves a tua respiração.",
   backendUnreachable:
     "Não foi possível contactar o servidor do jogo. Inicia o backend com «npm run dev:backend» na raiz do projeto (porta 3001) e recarrega a página.",
-  memoryTitle: "Memória",
-  memoryLead: "Factos importantes que o narrador guarda sobre a aventura.",
-  memoryToggleLabel: "Ver memória da aventura",
-  memoryAriaLabel: "Variáveis de memória da aventura",
-  memoryCountLabel: (count: number) =>
-    count === 1 ? "1 facto" : `${count} factos`,
-  memoryEmpty: "Ainda não há factos registados na memória.",
-  memorySourcePlayer: "Jogador",
-  memorySourceExternal: "Externo",
-  memorySourceDiscovery: "Descoberta",
+  diaryTitle: "Diário",
+  diaryToggleLabel: "Ver diário",
+  diaryAriaLabel: "Diário da aventura",
+  diaryEmpty: "Ainda não há notas no diário.",
+  diaryTagPlayer: "Tu",
+  diaryTagExternal: "Mundo",
+  diaryTagDiscovery: "Pista",
   contextUsageAriaLabel: (percent: number, used: number, limit: number) =>
     `Contexto usado: ${percent} por cento, ${used} de ${limit} tokens`,
   contextUsageHint: (used: number, limit: number, percent: number) =>

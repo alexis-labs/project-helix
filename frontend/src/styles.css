@@ -1709,27 +1709,35 @@ button {
 /* ─── Attribute Bars ─── */
 
 .attribute-bars {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  grid-auto-rows: auto;
-  gap: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
   padding: 0;
   border: none;
-  align-items: center;
 }
 
 .attribute-bars--card {
   grid-area: detail;
   grid-column: 1 / -1;
-  width: 100%;
   margin-top: 6px;
-  gap: 12px 10px;
+  gap: 12px;
 }
 
-.attribute-bars--card .bar-container {
+.attribute-bar {
+  display: grid;
+  gap: 6px;
   width: 100%;
   min-width: 0;
-  height: 10px;
+}
+
+.attribute-bar-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
 }
 
 .attribute-bar-label {
@@ -1739,39 +1747,20 @@ button {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  text-align: right;
-}
-
-.attribute-bars--card .attribute-bar-label {
-  min-width: 4.8rem;
 }
 
 .bar-container {
   position: relative;
-  width: 70px;
+  width: 100%;
+  min-width: 0;
   height: 8px;
   border-radius: var(--radius-pill);
-  background:
-    radial-gradient(circle at 18% 50%, var(--bar-track-glow), transparent 18px),
-    linear-gradient(180deg, var(--bar-track-top) 0%, var(--bar-track-mid) 55%, var(--bar-track-bottom) 100%);
-  border: 1px solid var(--bar-track-border);
-  box-shadow:
-    inset 0 1px 2px var(--bar-track-inset-hi),
-    inset 0 -2px 5px var(--bar-track-inset-lo),
-    0 0 5px var(--bar-track-outer-glow);
+  background: color-mix(in srgb, var(--border) 65%, transparent);
   overflow: hidden;
 }
 
-.bar-container::before {
-  content: "";
-  position: absolute;
-  inset: 1px;
-  border-radius: inherit;
-  background:
-    repeating-linear-gradient(90deg, var(--bar-track-stripe) 0 1px, transparent 1px 9px);
-  opacity: 0.28;
-  pointer-events: none;
-  z-index: 1;
+.attribute-bars--card .bar-container {
+  height: 10px;
 }
 
 .bar-fill {
@@ -1780,91 +1769,15 @@ button {
   left: 0;
   height: 100%;
   border-radius: inherit;
-  transition: width 0.4s ease-out, filter 0.4s ease-out;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 238, 204, 0.16),
-    inset 0 -1px 3px rgba(34, 0, 0, 0.46),
-    0 0 4px currentColor;
-  color: color-mix(in srgb, var(--stat-fear) 72%, transparent);
-}
-
-.bar-fill::before,
-.bar-fill::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-}
-
-.bar-fill::before {
-  background:
-    radial-gradient(circle at 16% 30%, rgba(255, 120, 104, 0.28) 0 1px, transparent 2px),
-    radial-gradient(circle at 58% 62%, rgba(68, 0, 0, 0.5) 0 2px, transparent 3px),
-    linear-gradient(180deg, rgba(255, 80, 70, 0.16), transparent 42%);
-  opacity: 0.56;
-}
-
-.bar-fill::after {
-  right: -4px;
-  left: auto;
-  width: 8px;
-  background: radial-gradient(circle, rgba(255, 88, 75, 0.5) 0 1px, rgba(156, 15, 15, 0.36) 3px, transparent 5px);
-}
-
-.bar-fill-fear,
-.bar-fill-injuries {
-  animation: blood-pulse 2.8s ease-in-out infinite;
-}
-
-.bar-fill-fear {
-  color: var(--stat-fear);
-  background: linear-gradient(90deg, #4c0505 0%, #8f1111 46%, #e53935 100%);
-}
-
-.bar-fill-injuries {
-  color: var(--stat-injuries);
-  background: linear-gradient(90deg, #4a1205 0%, #9f2a10 48%, #ff6b2b 100%);
-}
-
-.bar-fill-hunger {
-  color: var(--stat-hunger);
-  background: linear-gradient(90deg, #4b3510 0%, #a77c1d 52%, #f0c85a 100%);
-}
-
-.bar-fill-hunger::before {
-  background:
-    radial-gradient(circle at 28% 44%, rgba(255, 219, 112, 0.2) 0 1px, transparent 2px),
-    linear-gradient(180deg, rgba(255, 226, 143, 0.12), transparent 48%);
-  opacity: 0.42;
-}
-
-.bar-fill-hunger::after {
-  background: radial-gradient(circle, rgba(240, 200, 90, 0.36) 0 1px, rgba(128, 88, 18, 0.28) 3px, transparent 8px);
-}
-
-.bar-fill-exhaustion {
-  color: var(--stat-exhaustion);
-  background: linear-gradient(90deg, #123421 0%, #277247 52%, #67e89a 100%);
-}
-
-.bar-fill-exhaustion::before {
-  background:
-    radial-gradient(circle at 28% 44%, rgba(127, 255, 176, 0.18) 0 1px, transparent 2px),
-    linear-gradient(180deg, rgba(108, 241, 158, 0.1), transparent 48%);
-  opacity: 0.36;
-}
-
-.bar-fill-exhaustion::after {
-  background: radial-gradient(circle, rgba(103, 232, 154, 0.32) 0 1px, rgba(39, 114, 71, 0.28) 3px, transparent 8px);
+  transition: width 0.4s ease-out, background-color 0.4s ease-out;
 }
 
 .attribute-bar-meta {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  min-width: 3.4rem;
+  flex-shrink: 0;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .attribute-change-list {
@@ -1974,17 +1887,6 @@ button {
   }
 }
 
-@keyframes blood-pulse {
-  0%,
-  100% {
-    filter: brightness(0.95) saturate(1);
-  }
-
-  50% {
-    filter: brightness(1.18) saturate(1.28);
-  }
-}
-
 .bar-value {
   color: var(--text);
   font-size: var(--text-xxs);
@@ -2000,17 +1902,17 @@ button {
   border-top: 1px solid var(--border);
 }
 
-/* ─── Memory View ─── */
+/* ─── Adventure diary (notes) ─── */
 
-.play-area > .memory-view {
+.play-area > .diary-view {
   min-height: 0;
   min-width: 0;
 }
 
-.memory-view {
+.diary-view {
   display: flex;
   flex-direction: column;
-  gap: clamp(16px, 2vh, 24px);
+  gap: clamp(14px, 2vh, 20px);
   min-height: 0;
   min-width: 0;
   padding: clamp(24px, 3.2vw, 40px) clamp(28px, 3.6vw, 48px);
@@ -2021,155 +1923,76 @@ button {
   scrollbar-color: var(--scrollbar) transparent;
 }
 
-.memory-view-header {
-  display: flex;
-  flex-shrink: 0;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding-bottom: clamp(14px, 2vh, 20px);
-  border-bottom: 1px solid var(--border);
-}
-
-.memory-view-heading {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  min-width: 0;
-}
-
-.memory-view-icon {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  color: var(--accent);
-  border-radius: var(--radius-sm);
-  background: var(--accent-dim);
-}
-
-.memory-view-title {
+.diary-view-title {
   margin: 0;
+  padding-bottom: clamp(12px, 1.8vh, 18px);
   color: var(--text-strong);
   font-size: var(--text-lg);
   font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
-.memory-view-lead {
-  margin: 4px 0 0;
-  color: var(--muted);
-  font-size: var(--text-xs);
-  line-height: 1.45;
-}
-
-.memory-view-count {
-  flex-shrink: 0;
-  padding: 4px 10px;
-  color: var(--muted);
-  font-size: var(--text-xxs);
-  font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface-elevated);
+  border-bottom: 1px solid var(--border);
 }
 
-.memory-view-list {
-  display: grid;
-  gap: 12px;
+.diary-view-list {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.memory-card {
-  padding: 16px 18px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--surface-elevated) 55%, var(--surface));
-}
-
-.memory-card-head {
+.diary-note {
   display: flex;
-  align-items: flex-start;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
 
-.memory-card-fact {
+.diary-note:last-child {
+  border-bottom: 0;
+}
+
+.diary-note-text {
   margin: 0;
   flex: 1;
   min-width: 0;
   color: var(--text-strong);
   font-size: var(--text-md);
-  font-weight: 600;
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
-.memory-card-detail {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  color: var(--muted);
-  font-family: inherit;
-  font-size: var(--text-xs);
-  line-height: 1.45;
-}
-
-.memory-card-label {
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.memory-card-state {
-  color: var(--text);
-}
-
-.memory-card-separator {
-  opacity: 0.55;
-}
-
-.memory-source {
+.diary-tag {
   flex-shrink: 0;
-  padding: 3px 8px;
+  padding: 2px 8px;
   border-radius: 999px;
   font-size: 0.62rem;
   font-weight: 600;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.memory-source-jogador {
+.diary-tag-jogador {
   color: #93c5fd;
   background: rgba(59, 130, 246, 0.14);
 }
 
-.memory-source-externo {
+.diary-tag-externo {
   color: #fca5a5;
   background: rgba(239, 68, 68, 0.14);
 }
 
-.memory-source-descoberta {
+.diary-tag-descoberta {
   color: #fcd34d;
   background: rgba(245, 158, 11, 0.14);
 }
 
-.memory-view-empty {
+.diary-view-empty {
   margin: 0;
-  padding: 48px 16px;
   color: var(--muted);
-  font-family: inherit;
   font-size: var(--text-md);
   font-style: italic;
   line-height: 1.55;
-  text-align: center;
 }
 
 /* ─── Responsive ─── */
@@ -2257,18 +2080,14 @@ button {
     font-size: 1.48rem;
   }
 
-  .memory-view {
+  .diary-view {
     padding: 20px 18px;
   }
 
-  .memory-view-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .memory-card-head {
+  .diary-note {
     flex-direction: column;
     align-items: flex-start;
+    gap: 8px;
   }
 
   .narration-panel {

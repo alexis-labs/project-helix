@@ -1,21 +1,20 @@
 import { useMemo } from "react";
-import { Brain } from "lucide-react";
 import { uiText } from "../content/uiText";
-import { formatMemoryToken, listMemoryVariables } from "../game/adventureMemory";
+import { listMemoryVariables } from "../game/adventureMemory";
 import type { AdventureMemory, MemorySource } from "../types";
 
 type MemoryPanelProps = {
   memory: AdventureMemory;
 };
 
-const sourceLabels: Record<MemorySource, string> = {
-  jogador: uiText.memorySourcePlayer,
-  externo: uiText.memorySourceExternal,
-  descoberta: uiText.memorySourceDiscovery
+const sourceTags: Record<MemorySource, string> = {
+  jogador: uiText.diaryTagPlayer,
+  externo: uiText.diaryTagExternal,
+  descoberta: uiText.diaryTagDiscovery
 };
 
 export function MemoryPanel({ memory }: MemoryPanelProps) {
-  const variables = useMemo(
+  const notes = useMemo(
     () =>
       listMemoryVariables(memory).sort((left, right) =>
         left.description.localeCompare(right.description, "pt")
@@ -24,43 +23,19 @@ export function MemoryPanel({ memory }: MemoryPanelProps) {
   );
 
   return (
-    <section aria-label={uiText.memoryAriaLabel} className="memory-view">
-      <header className="memory-view-header">
-        <div className="memory-view-heading">
-          <span aria-hidden="true" className="memory-view-icon">
-            <Brain size={18} strokeWidth={1.6} />
-          </span>
-          <div>
-            <h2 className="memory-view-title">{uiText.memoryTitle}</h2>
-            <p className="memory-view-lead">{uiText.memoryLead}</p>
-          </div>
-        </div>
-        {variables.length > 0 ? (
-          <span className="memory-view-count">
-            {uiText.memoryCountLabel(variables.length)}
-          </span>
-        ) : null}
-      </header>
+    <section aria-label={uiText.diaryAriaLabel} className="diary-view">
+      <h2 className="diary-view-title">{uiText.diaryTitle}</h2>
 
-      {variables.length === 0 ? (
-        <p className="memory-view-empty">{uiText.memoryEmpty}</p>
+      {notes.length === 0 ? (
+        <p className="diary-view-empty">{uiText.diaryEmpty}</p>
       ) : (
-        <ul className="memory-view-list">
-          {variables.map((entry) => (
-            <li className="memory-card" key={entry.key}>
-              <div className="memory-card-head">
-                <h3 className="memory-card-fact">{entry.description}</h3>
-                <span className={`memory-source memory-source-${entry.source}`}>
-                  {sourceLabels[entry.source]}
-                </span>
-              </div>
-              <p className="memory-card-detail">
-                <span className="memory-card-label">{formatMemoryToken(entry.key)}</span>
-                <span aria-hidden="true" className="memory-card-separator">
-                  ·
-                </span>
-                <span className="memory-card-state">{formatMemoryToken(entry.value)}</span>
-              </p>
+        <ul className="diary-view-list">
+          {notes.map((note) => (
+            <li className="diary-note" key={note.key}>
+              <p className="diary-note-text">{note.description}</p>
+              <span className={`diary-tag diary-tag-${note.source}`}>
+                {sourceTags[note.source]}
+              </span>
             </li>
           ))}
         </ul>
