@@ -1,6 +1,7 @@
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { uiText } from "../content/uiText";
 import { EreaderToneSlider } from "./EreaderToneSlider";
+import { FontSizeSlider } from "./FontSizeSlider";
 import { StateIndicators } from "./StateIndicators";
 import type { AttributeKey } from "../game/attributeChanges";
 import type { GameAttributes, GameStatus, SidebarAction } from "../types";
@@ -10,9 +11,12 @@ type HistoryPanelProps = {
   attributeChanges?: Partial<Record<AttributeKey, number>> | null;
   attributes: GameAttributes;
   ereaderTone: number;
+  fontScale: number;
   isEreaderToneOpen: boolean;
+  isFontScaleOpen: boolean;
   isOpen: boolean;
   onEreaderToneChange: (value: number) => void;
+  onFontScaleChange: (value: number) => void;
   onToggle: () => void;
   status: GameStatus;
 };
@@ -22,21 +26,28 @@ export function HistoryPanel({
   attributeChanges,
   attributes,
   ereaderTone,
+  fontScale,
   isEreaderToneOpen,
+  isFontScaleOpen,
   isOpen,
   onEreaderToneChange,
+  onFontScaleChange,
   onToggle,
   status
 }: HistoryPanelProps) {
   const ToggleIcon = isOpen ? PanelRightClose : PanelRightOpen;
   const isToneControlVisible = isOpen && isEreaderToneOpen;
+  const isFontScaleControlVisible = isOpen && isFontScaleOpen;
+  const openSliderCount =
+    (isToneControlVisible ? 1 : 0) + (isFontScaleControlVisible ? 1 : 0);
 
   return (
     <aside
       className={[
         "history-panel",
         isOpen ? "is-open" : "",
-        isToneControlVisible ? "is-tone-open" : ""
+        openSliderCount === 1 ? "has-one-sidebar-slider" : "",
+        openSliderCount === 2 ? "has-two-sidebar-sliders" : ""
       ]
         .filter(Boolean)
         .join(" ")}
@@ -85,6 +96,10 @@ export function HistoryPanel({
           onChange={onEreaderToneChange}
           value={ereaderTone}
         />
+      ) : null}
+
+      {isFontScaleControlVisible ? (
+        <FontSizeSlider onChange={onFontScaleChange} value={fontScale} />
       ) : null}
 
       <div className="sidebar-footer">

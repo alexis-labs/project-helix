@@ -1,4 +1,5 @@
 :root {
+  --font-scale: 1;
   --eread-base-mix: 100%;
   --eread-mix: 0%;
   --eread-brightness: 1;
@@ -246,6 +247,10 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+}
+
+html {
+  font-size: calc(100% * var(--font-scale));
 }
 
 :root[data-theme="light"] {
@@ -694,6 +699,24 @@ button {
   background: var(--bg);
 }
 
+.play-main-panel {
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.play-main-panel > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.play-story-stack.is-view-hidden {
+  display: none;
+}
+
 .play-story-stack {
   display: flex;
   flex-direction: column;
@@ -815,7 +838,7 @@ button {
 
 .story-search-results .diary-entry-index {
   color: var(--history-index);
-  font-size: var(--text-xs);
+  font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -830,7 +853,7 @@ button {
 .story-search-results .diary-passage-heading {
   margin: 0 0 8px;
   color: var(--muted);
-  font-size: var(--text-xxs);
+  font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -859,8 +882,8 @@ button {
     "Georgia",
     "Times New Roman",
     serif;
-  font-size: clamp(1rem, 1.2vw, 1.15rem);
-  line-height: 1.7;
+  font-size: clamp(1.05rem, 1.4vw, 1.32rem);
+  line-height: 1.75;
   overflow-wrap: break-word;
   white-space: pre-wrap;
 }
@@ -1327,8 +1350,12 @@ button {
   transition: padding 200ms ease;
 }
 
-.history-panel.is-tone-open {
+.history-panel.has-one-sidebar-slider {
   grid-template-rows: auto auto auto;
+}
+
+.history-panel.has-two-sidebar-sliders {
+  grid-template-rows: auto auto auto auto;
 }
 
 .history-panel:not(.is-open) {
@@ -1391,8 +1418,54 @@ button {
   letter-spacing: 0.02em;
 }
 
-.history-panel:not(.is-open) .eread-tone-control {
+.history-panel:not(.is-open) .eread-tone-control,
+.history-panel:not(.is-open) .font-scale-control {
   display: none;
+}
+
+.font-scale-control {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.font-scale-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.font-scale-label svg {
+  flex: 0 0 auto;
+  color: var(--text);
+}
+
+.font-scale-value {
+  margin-left: auto;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.font-scale-slider {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.font-scale-hints {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 0.65rem;
+  letter-spacing: 0.02em;
 }
 
 .history-toggle,
@@ -1817,8 +1890,8 @@ button {
 }
 
 .attribute-change-list--diary .attribute-change {
-  padding: 4px 9px;
-  font-size: 0.72rem;
+  padding: 5px 11px;
+  font-size: 0.78rem;
   border-radius: var(--radius-xs);
   background: color-mix(in srgb, currentColor 12%, transparent);
   animation: none;
@@ -1904,6 +1977,7 @@ button {
 
 /* ─── Adventure diary (notes) ─── */
 
+.play-area > .play-main-panel > .diary-view,
 .play-area > .diary-view {
   min-height: 0;
   min-width: 0;
@@ -1927,7 +2001,7 @@ button {
   margin: 0;
   padding-bottom: clamp(12px, 1.8vh, 18px);
   color: var(--text-strong);
-  font-size: var(--text-lg);
+  font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1958,17 +2032,22 @@ button {
   flex: 1;
   min-width: 0;
   color: var(--text-strong);
-  font-size: var(--text-md);
-  line-height: 1.5;
+  font-family:
+    "Georgia",
+    "Times New Roman",
+    serif;
+  font-size: clamp(1.05rem, 1.4vw, 1.32rem);
+  line-height: 1.75;
+  overflow-wrap: break-word;
 }
 
 .diary-tag {
   flex-shrink: 0;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 0.62rem;
+  padding: 5px 12px;
+  border-radius: var(--radius-xs);
+  font-size: 0.7rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -2094,7 +2173,9 @@ button {
     padding: 20px 18px;
   }
 
-  .narration-panel p {
+  .narration-panel p,
+  .diary-note-text,
+  .story-search-results .diary-passage.is-narrator p {
     font-size: 1rem;
     line-height: 1.7;
   }

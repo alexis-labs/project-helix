@@ -1,3 +1,5 @@
+import { FONT_SCALE_DEFAULT } from "../hooks/useFontScale";
+
 export const uiText = {
   title: "Blindfold",
   subtitle: "Uma venda. Nenhuma saída visível.",
@@ -52,6 +54,19 @@ export const uiText = {
         : `${value} por cento de luminosidade quente`,
   ereadToneMinHint: "Normal",
   ereadToneMaxHint: "Quente",
+  fontScaleLabel: "Tamanho do texto",
+  fontScaleToggleLabel: "Ajustar tamanho do texto",
+  fontScaleAriaLabel: "Ajustar tamanho das letras",
+  fontScaleValueLabel: (value: number) =>
+    value === FONT_SCALE_DEFAULT
+      ? "Tamanho de texto normal"
+      : value <= 90
+        ? "Texto mais pequeno"
+        : value >= 120
+          ? "Texto maior no máximo"
+          : `${value} por cento do tamanho normal`,
+  fontScaleMinHint: "Menor",
+  fontScaleMaxHint: "Maior",
   stateIndicatorsAriaLabel: "HUD de mapa, inventário e estado",
   vitalsIndicatorLabel: "Estado",
   attributeChangesAriaLabel: "Alterações de estado",

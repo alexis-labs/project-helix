@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { BookOpen, Moon, Sun, Volume2 } from "lucide-react";
+import { BookOpen, Moon, Sun, Type, Volume2 } from "lucide-react";
 import { fetchContextLimits } from "../api/health";
 import { requestNarration } from "../api/play";
 import { requestStorySummary } from "../api/summary";
 import { useAmbientAudio } from "../audio/useAmbientAudio";
 import { useEreaderTone } from "../hooks/useEreaderTone";
+import { useFontScale } from "../hooks/useFontScale";
 import { useSidebarResize } from "../hooks/useSidebarResize";
 import {
   clearSavedGame,
@@ -178,6 +179,7 @@ function persistProgress(state: ActiveGameState) {
 export function App() {
   const { isAmbientOn, toggleAmbient } = useAmbientAudio();
   const { tone: ereadTone, setTone: setEreadTone } = useEreaderTone();
+  const { fontScale, setFontScale } = useFontScale();
   const [screen, setScreen] = useState<"menu" | "playing">("menu");
   const [canContinue, setCanContinue] = useState(hasSavedGame);
   const [theme, setTheme] = useState<"dark" | "light">(() => {
@@ -197,6 +199,7 @@ export function App() {
   const [storySearchQuery, setStorySearchQuery] = useState("");
   const [isDiaryOpen, setIsDiaryOpen] = useState(false);
   const [isEreaderToneOpen, setIsEreaderToneOpen] = useState(false);
+  const [isFontScaleOpen, setIsFontScaleOpen] = useState(false);
   const [attributes, setAttributes] = useState(createNewGameState().attributes);
   const [status, setStatus] = useState(createNewGameState().status);
   const [memory, setMemory] = useState<AdventureMemory>(createNewGameState().memory);
@@ -239,6 +242,22 @@ export function App() {
       isPressed: isEreaderToneOpen,
       onClick: () =>
         setIsEreaderToneOpen((current) => {
+          const next = !current;
+
+          if (next) {
+            setIsHistoryOpen(true);
+          }
+
+          return next;
+        })
+    },
+    {
+      id: "font-scale",
+      label: uiText.fontScaleToggleLabel,
+      icon: Type,
+      isPressed: isFontScaleOpen,
+      onClick: () =>
+        setIsFontScaleOpen((current) => {
           const next = !current;
 
           if (next) {
@@ -546,12 +565,17 @@ export function App() {
           resultCount={filteredDiaryEntries.length}
           totalEntries={diaryEntries.length}
         />
-        {isDiaryOpen ? (
-          <MemoryPanel memory={memory} />
-        ) : isStorySearchActive ? (
-          <StorySearchResults history={history} query={storySearchQuery} />
-        ) : (
-          <div className="play-story-stack">
+        <div className="play-main-panel">
+          <div
+            aria-hidden={isDiaryOpen || isStorySearchActive}
+            className={[
+              "play-story-stack",
+              isDiaryOpen || isStorySearchActive ? "is-view-hidden" : ""
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            hidden={isDiaryOpen || isStorySearchActive}
+          >
             <NarrationPanel
               attributeChanges={currentAttributeChanges}
               currentAction={currentAction}
@@ -567,7 +591,12 @@ export function App() {
               />
             ) : null}
           </div>
-        )}
+          {isDiaryOpen ? (
+            <MemoryPanel memory={memory} />
+          ) : isStorySearchActive ? (
+            <StorySearchResults history={history} query={storySearchQuery} />
+          ) : null}
+        </div>
         {!gameOver ? (
           <CommandInput
             contextLimitTokens={contextLimits.contextWindowTokens}
@@ -601,9 +630,12 @@ export function App() {
         attributeChanges={currentAttributeChanges}
         attributes={attributes}
         ereaderTone={ereadTone}
+        fontScale={fontScale}
         isEreaderToneOpen={isEreaderToneOpen}
+        isFontScaleOpen={isFontScaleOpen}
         isOpen={isHistoryOpen}
         onEreaderToneChange={setEreadTone}
+        onFontScaleChange={setFontScale}
         onToggle={() => setIsHistoryOpen((current) => !current)}
         status={status}
       />
