@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 export type Turn = {
   role: "player" | "narrator";
   content: string;
+  contextContent?: string;
 };
 
 export type SidebarAction = {

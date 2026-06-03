@@ -20,6 +20,19 @@ const INITIAL_ATTRIBUTES: GameAttributes = {
   exhaustion: 15
 };
 
+function stripUiStateBlock(narratorResponse: string) {
+  const lines = narratorResponse.split("\n");
+  const stateBlockStart = lines.findIndex((line) =>
+    /^(ESTADO_UI:|MEDO:)/i.test(line.trim())
+  );
+
+  if (stateBlockStart === -1) {
+    return narratorResponse.trim();
+  }
+
+  return lines.slice(0, stateBlockStart).join("\n").trim();
+}
+
 function extractAttributes(narratorResponse: string): GameAttributes | null {
   const lines = narratorResponse.split("\n");
   const attributes: Partial<GameAttributes> = {};
@@ -113,9 +126,14 @@ export function App() {
 
     try {
       const reply = await requestNarration(trimmed, history);
-      const narratorTurn: Turn = { role: "narrator", content: reply };
+      const visibleReply = stripUiStateBlock(reply) || reply;
+      const narratorTurn: Turn = {
+        role: "narrator",
+        content: visibleReply,
+        contextContent: reply
+      };
 
-      setCurrentReply(reply);
+      setCurrentReply(visibleReply);
       setHistory((previous) => [...previous, narratorTurn]);
 
       const extractedAttributes = extractAttributes(reply);

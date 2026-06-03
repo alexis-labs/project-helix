@@ -14,7 +14,10 @@ export async function requestNarration(message: string, history: Turn[]) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       message,
-      history: history.slice(-12)
+      history: history.slice(-12).map((turn) => ({
+        role: turn.role,
+        content: turn.contextContent || turn.content
+      }))
     })
   });
 

@@ -67,7 +67,10 @@ async function narrateWithOpenAI(message: string, history: ClientTurn[]) {
     { role: "system", content: systemPrompt },
     ...history.slice(-10).map((turn) => ({
       role: turn.role === "player" ? ("user" as const) : ("assistant" as const),
-      content: turn.content
+      content:
+        turn.role === "narrator"
+          ? stripUiStateBlock(turn.content)
+          : turn.content
     })),
     { role: "user", content: message }
   ];
@@ -83,7 +86,7 @@ async function narrateWithOpenAI(message: string, history: ClientTurn[]) {
 async function createCompletionWithRetry(
   messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]
 ) {
-  const maxAttempts = 3;
+  const maxAttempts = 4;
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -96,13 +99,13 @@ async function createCompletionWithRetry(
     } catch (error) {
       lastError = error;
 
-      if (!isRateLimitError(error) || attempt === maxAttempts) {
+      if (!isRetryableError(error) || attempt === maxAttempts) {
         throw error;
       }
 
       const delayMs = 1000 * 2 ** (attempt - 1);
       console.warn(
-        `LLM rate limited (${llmConfig.model}). Retrying in ${delayMs}ms...`
+        `LLM transient error (${llmConfig.model}, attempt ${attempt}/${maxAttempts}). Retrying in ${delayMs}ms...`
       );
       await sleep(delayMs);
     }
@@ -111,13 +114,26 @@ async function createCompletionWithRetry(
   throw lastError;
 }
 
-function isRateLimitError(error: unknown) {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "status" in error &&
-    error.status === 429
+function isRetryableError(error: unknown) {
+  if (typeof error !== "object" || error === null || !("status" in error)) {
+    return false;
+  }
+
+  const status = (error as { status?: number }).status;
+  return status === 429 || status === 502 || status === 503;
+}
+
+function stripUiStateBlock(text: string) {
+  const lines = text.split("\n");
+  const stateBlockStart = lines.findIndex((line) =>
+    /^(ESTADO_UI:|MEDO:)/i.test(line.trim())
   );
+
+  if (stateBlockStart === -1) {
+    return text.trim();
+  }
+
+  return lines.slice(0, stateBlockStart).join("\n").trim();
 }
 
 function sleep(ms: number) {
@@ -134,6 +150,14 @@ function formatNarrationError(error: unknown) {
     message?: string;
     error?: { message?: string };
   };
+
+  if (apiError.status === 429) {
+    return "Limite de pedidos atingido. Espera alguns segundos e tenta outra vez.";
+  }
+
+  if (apiError.status === 502 || apiError.status === 503) {
+    return "O narrador está temporariamente indisponível. Tenta outra vez.";
+  }
 
   const status = apiError.status ? `[${apiError.status}] ` : "";
   const message =

@@ -439,7 +439,11 @@ Fim do Ato 1.
 
 # FORMATO OBRIGATÓRIO DE RESPOSTA
 
-No final de cada resposta deves sempre atualizar o estado de barras:
+Primeiro escreve apenas a narração para o jogador.
+Depois, no final, inclui sempre o bloco técnico abaixo para a interface atualizar o estado.
+Este bloco não faz parte da narração e não deve ser explicado ao jogador.
+
+ESTADO_UI:
 
 MEDO: X/100
 FERIMENTOS: X/100
@@ -488,7 +492,7 @@ export const llmConfig = {
         : undefined),
   model: readEnv("OPENAI_MODEL") || defaultModel,
   temperature: 0.85,
-  maxCompletionTokens: 512
+  maxCompletionTokens: Number(readEnv("LLM_MAX_COMPLETION_TOKENS") || 1024)
 };
 
 export function buildCompletionParams() {
