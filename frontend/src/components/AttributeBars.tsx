@@ -4,10 +4,10 @@ type AttributeBarProps = {
   label: string;
   value: number;
   max: number;
-  color: string;
+  tone: "fear" | "injuries" | "hunger" | "exhaustion";
 };
 
-function AttributeBar({ label, value, max, color }: AttributeBarProps) {
+function AttributeBar({ label, value, max, tone }: AttributeBarProps) {
   const percentage = (value / max) * 100;
 
   return (
@@ -15,10 +15,9 @@ function AttributeBar({ label, value, max, color }: AttributeBarProps) {
       <label className="attribute-bar-label">{label}</label>
       <div className="bar-container">
         <div
-          className="bar-fill"
+          className={`bar-fill bar-fill-${tone}`}
           style={{
-            width: `${percentage}%`,
-            backgroundColor: color
+            width: `${percentage}%`
           }}
         />
       </div>
@@ -30,10 +29,10 @@ function AttributeBar({ label, value, max, color }: AttributeBarProps) {
 export function AttributeBars({ fear, injuries, hunger, exhaustion }: GameAttributes) {
   return (
     <div className="attribute-bars">
-      <AttributeBar label="Medo" value={fear} max={100} color="#dc2626" />
-      <AttributeBar label="Ferimentos" value={injuries} max={100} color="#ea580c" />
-      <AttributeBar label="Fome" value={hunger} max={100} color="#d4af37" />
-      <AttributeBar label="Exaustão" value={exhaustion} max={100} color="#4ade80" />
+      <AttributeBar label="Medo" value={fear} max={100} tone="fear" />
+      <AttributeBar label="Ferimentos" value={injuries} max={100} tone="injuries" />
+      <AttributeBar label="Fome" value={hunger} max={100} tone="hunger" />
+      <AttributeBar label="Exaustão" value={exhaustion} max={100} tone="exhaustion" />
     </div>
   );
 }

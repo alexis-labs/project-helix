@@ -1,3 +1,7 @@
+import dotenv from "dotenv";
+
+dotenv.config({ path: process.env.DOTENV_CONFIG_PATH || "../.env" });
+
 export const systemPrompt = `# SISTEMA - NARRADOR INTERATIVO
 
 És o Narrador de um jogo narrativo pós-apocalíptico de terror psicológico.
@@ -447,8 +451,25 @@ OBJETIVO ATUAL:
 
 Depois aguarda pela próxima ação do jogador.`;
 
+const readEnv = (name: string) => {
+  const value = process.env[name]?.trim();
+  return value || undefined;
+};
+
+const provider = readEnv("LLM_PROVIDER") || "openrouter";
+const defaultModel = provider === "openai" ? "gpt-4.1-mini" : "openrouter/free";
+const providerKeyName = `${provider.toUpperCase()}_API_KEY`;
+
 export const llmConfig = {
-  model: process.env.OPENAI_MODEL || "gpt-5.4-mini",
+  provider,
+  apiKey:
+    readEnv("LLM_API_KEY") ||
+    readEnv(providerKeyName) ||
+    (provider === "openai" ? readEnv("OPENAI_API_KEY") : undefined),
+  baseUrl:
+    readEnv("OPENAI_BASE_URL") ||
+    (provider === "openrouter" ? "https://openrouter.ai/api/v1" : undefined),
+  model: readEnv("OPENAI_MODEL") || defaultModel,
   temperature: 0.85,
   maxCompletionTokens: 120
 };

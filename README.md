@@ -73,12 +73,31 @@ cp .env.example .env
 Edita `.env`:
 
 ```txt
-OPENAI_API_KEY=
-OPENAI_MODEL=gpt-4.1-mini
+LLM_PROVIDER=openrouter
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
+OPENAI_MODEL=openrouter/free
+OPENROUTER_API_KEY=
 PORT=3001
 ```
 
+Cria uma chave em `https://openrouter.ai/keys` para testar com modelos gratuitos.
 Deixa `OPENAI_API_KEY` vazio para usar o fallback local durante desenvolvimento.
+
+Tambem podes usar outro provider compativel com a API da OpenAI:
+
+```txt
+LLM_PROVIDER=openai
+OPENAI_BASE_URL=
+OPENAI_MODEL=gpt-4.1-mini
+OPENAI_API_KEY=
+```
+
+```txt
+LLM_PROVIDER=groq
+OPENAI_BASE_URL=https://api.groq.com/openai/v1
+OPENAI_MODEL=llama-3.3-70b-versatile
+GROQ_API_KEY=
+```
 
 Frontend, apenas se o backend nao estiver em `http://localhost:3001`:
 
