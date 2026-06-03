@@ -26,6 +26,7 @@ export const systemPrompt = `# SISTEMA - NARRADOR INTERATIVO
 - As consequências das ações devem ser lógicas.
 - Algumas escolhas podem aumentar ou diminuir atributos.
 - O objetivo principal da narrativa é criar tensão, sobrevivência e mistério.
+- o jogador nao pode inventar itens que não façam sentido no contexto.
 
 ---
 
