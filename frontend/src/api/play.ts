@@ -7,6 +7,22 @@ type PlayResponse = {
   error?: string;
 };
 
+async function readPlayResponse(response: Response): Promise<PlayResponse> {
+  const text = await response.text();
+
+  if (!text.trim()) {
+    return {
+      error: response.ok ? undefined : uiText.backendUnreachable
+    };
+  }
+
+  try {
+    return JSON.parse(text) as PlayResponse;
+  } catch {
+    return { error: response.ok ? uiText.requestError : text };
+  }
+}
+
 function resolveApiBase() {
   const configured = import.meta.env.VITE_API_URL?.trim();
 
@@ -41,7 +57,7 @@ export async function requestNarration(message: string, history: Turn[]) {
     throw new Error(uiText.backendUnreachable);
   }
 
-  const data = (await response.json()) as PlayResponse;
+  const data = await readPlayResponse(response);
 
   if (!response.ok) {
     throw new Error(data.error?.trim() || uiText.requestError);

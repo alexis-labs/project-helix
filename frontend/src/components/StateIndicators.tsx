@@ -31,26 +31,14 @@ function StateIndicator({ children, icon: Icon, label, value, variant }: StateIn
   );
 }
 
-function formatInventoryItem(item: string) {
-  const words = item.trim().split(/\s+/).filter(Boolean);
-
-  if (words.length <= 2) {
-    return item;
-  }
-
-  return `${words.slice(0, 2).join(" ")}…`;
-}
-
 function InventoryItems({ inventory }: Pick<StateIndicatorsProps, "inventory">) {
-  const visibleItems = inventory.slice(0, 4);
-  const hiddenCount = inventory.length - visibleItems.length;
-  const slots = Array.from({ length: 4 }, (_, index) => visibleItems[index] ?? null);
+  const slots = inventory.length > 0
+    ? inventory.map((item) => item)
+    : Array.from({ length: 4 }, () => null);
 
   return (
     <ul className="inventory-slot-list" aria-label={uiText.inventoryItemsAriaLabel}>
       {slots.map((item, index) => {
-        const shortLabel = item ? formatInventoryItem(item) : uiText.inventoryEmptySlotLabel;
-
         return (
           <li
             aria-label={item ?? uiText.inventoryEmptySlotLabel}
@@ -58,15 +46,10 @@ function InventoryItems({ inventory }: Pick<StateIndicatorsProps, "inventory">) 
             key={item ? `${item}-${index}` : `empty-${index}`}
             title={item ?? uiText.inventoryEmptySlotLabel}
           >
-            {shortLabel}
+            {item ?? uiText.inventoryEmptySlotLabel}
           </li>
         );
       })}
-      {hiddenCount > 0 ? (
-        <li className="inventory-slot inventory-slot-more">
-          {uiText.inventoryHiddenItemsLabel(hiddenCount)}
-        </li>
-      ) : null}
     </ul>
   );
 }
