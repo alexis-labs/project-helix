@@ -21,3 +21,8 @@ export type GameAttributes = {
   hunger: number;
   exhaustion: number;
 };
+
+export type GameStatus = {
+  location: string;
+  inventory: string[];
+};

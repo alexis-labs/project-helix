@@ -2,19 +2,36 @@ import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { uiText } from "../content/uiText";
 import { AttributeBars } from "./AttributeBars";
-import type { GameAttributes, SidebarAction, Turn } from "../types";
+import { EreaderToneSlider } from "./EreaderToneSlider";
+import { StateIndicators } from "./StateIndicators";
+import type { GameAttributes, GameStatus, SidebarAction, Turn } from "../types";
 
 type HistoryPanelProps = {
   actions: SidebarAction[];
   attributes: GameAttributes;
+  ereaderTone: number;
   history: Turn[];
+  isEreaderToneOpen: boolean;
   isOpen: boolean;
+  onEreaderToneChange: (value: number) => void;
   onToggle: () => void;
+  status: GameStatus;
 };
 
-export function HistoryPanel({ actions, attributes, history, isOpen, onToggle }: HistoryPanelProps) {
+export function HistoryPanel({
+  actions,
+  attributes,
+  ereaderTone,
+  history,
+  isEreaderToneOpen,
+  isOpen,
+  onEreaderToneChange,
+  onToggle,
+  status
+}: HistoryPanelProps) {
   const listRef = useRef<HTMLOListElement>(null);
   const ToggleIcon = isOpen ? PanelRightClose : PanelRightOpen;
+  const isToneControlVisible = isOpen && isEreaderToneOpen;
 
   useEffect(() => {
     const list = listRef.current;
@@ -28,7 +45,13 @@ export function HistoryPanel({ actions, attributes, history, isOpen, onToggle }:
 
   return (
     <aside
-      className={isOpen ? "history-panel is-open" : "history-panel"}
+      className={[
+        "history-panel",
+        isOpen ? "is-open" : "",
+        isToneControlVisible ? "is-tone-open" : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
       aria-label={uiText.historyAriaLabel}
     >
       <div className="sidebar-top">
@@ -41,9 +64,13 @@ export function HistoryPanel({ actions, attributes, history, isOpen, onToggle }:
               <button
                 aria-label={action.label}
                 aria-pressed={action.isPressed}
-                className={
-                  action.isActive ? "sidebar-action is-active" : "sidebar-action"
-                }
+                className={[
+                  "sidebar-action",
+                  action.isActive ? "is-active" : "",
+                  action.isPressed ? "is-pressed" : ""
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 key={action.id}
                 onClick={action.onClick}
                 title={action.label}
@@ -64,6 +91,12 @@ export function HistoryPanel({ actions, attributes, history, isOpen, onToggle }:
           </button>
         </div>
       </div>
+      {isToneControlVisible ? (
+        <EreaderToneSlider
+          onChange={onEreaderToneChange}
+          value={ereaderTone}
+        />
+      ) : null}
       <ol className="history-list" aria-hidden={!isOpen} ref={listRef}>
         {history.map((turn, index) => (
           <li className="history-turn" key={`${turn.role}-${index}`}>
@@ -77,8 +110,14 @@ export function HistoryPanel({ actions, attributes, history, isOpen, onToggle }:
           </li>
         ))}
       </ol>
-      <div className="sidebar-attributes">
-        <AttributeBars {...attributes} />
+      <div className="sidebar-footer">
+        <StateIndicators
+          inventory={status.inventory}
+          location={status.location}
+        />
+        <div className="sidebar-attributes">
+          <AttributeBars {...attributes} />
+        </div>
       </div>
     </aside>
   );

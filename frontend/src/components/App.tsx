@@ -2,12 +2,13 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Moon, Sun, Volume2 } from "lucide-react";
 import { requestNarration } from "../api/play";
 import { useAmbientAudio } from "../audio/useAmbientAudio";
+import { useEreaderTone } from "../hooks/useEreaderTone";
 import {
   connectionFailureNarration,
   openingNarration
 } from "../content/story";
 import { uiText } from "../content/uiText";
-import type { SidebarAction, Turn, GameAttributes } from "../types";
+import type { GameAttributes, GameStatus, SidebarAction, Turn } from "../types";
 import { CommandInput } from "./CommandInput";
 import { GameHeader } from "./GameHeader";
 import { HistoryPanel } from "./HistoryPanel";
@@ -18,6 +19,15 @@ const INITIAL_ATTRIBUTES: GameAttributes = {
   injuries: 0,
   hunger: 10,
   exhaustion: 15
+};
+
+const INITIAL_STATUS: GameStatus = {
+  location: "Abrigo da escola secundária",
+  inventory: [
+    "Venda improvisada",
+    "Fotografia antiga da mãe",
+    "Garrafa de água meio cheia"
+  ]
 };
 
 function stripUiStateBlock(narratorResponse: string) {
@@ -65,8 +75,87 @@ function extractAttributes(narratorResponse: string): GameAttributes | null {
   return null;
 }
 
+function isUiStateHeading(line: string) {
+  return /^(MEDO|FERIMENTOS|FOME|EXAUSTÃO|INVENTÁRIO|LOCALIZAÇÃO|OBJETIVO ATUAL):/i.test(
+    line.trim()
+  );
+}
+
+function extractInventory(narratorResponse: string): string[] | null {
+  const lines = narratorResponse.split("\n");
+  const inventoryStart = lines.findIndex((line) =>
+    /^INVENTÁRIO:/i.test(line.trim())
+  );
+
+  if (inventoryStart === -1) {
+    return null;
+  }
+
+  const items: string[] = [];
+
+  for (const rawLine of lines.slice(inventoryStart + 1)) {
+    const line = rawLine.trim();
+
+    if (isUiStateHeading(line)) {
+      break;
+    }
+
+    if (!line) {
+      continue;
+    }
+
+    const item = line.replace(/^[-*]\s*/, "").trim();
+
+    if (/^(nenhum|vazio|sem itens|\(.*\))$/i.test(item)) {
+      continue;
+    }
+
+    items.push(item);
+  }
+
+  return items;
+}
+
+function stripPlaceholder(value: string) {
+  return value.replace(/^\((.*)\)$/, "$1").trim();
+}
+
+function extractLocation(narratorResponse: string): string | null {
+  const lines = narratorResponse.split("\n");
+  const locationStart = lines.findIndex((line) =>
+    /^LOCALIZAÇÃO:/i.test(line.trim())
+  );
+
+  if (locationStart === -1) {
+    return null;
+  }
+
+  const firstLineValue = lines[locationStart].split(":").slice(1).join(":").trim();
+
+  if (firstLineValue) {
+    return stripPlaceholder(firstLineValue);
+  }
+
+  for (const rawLine of lines.slice(locationStart + 1)) {
+    const line = rawLine.trim();
+
+    if (!line) {
+      continue;
+    }
+
+    if (isUiStateHeading(line)) {
+      break;
+    }
+
+    return stripPlaceholder(line);
+  }
+
+  return null;
+}
+
 export function App() {
   const { isAmbientOn, toggleAmbient } = useAmbientAudio();
+  const { tone: ereadTone, setTone: setEreadTone } = useEreaderTone();
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     const savedTheme = window.localStorage.getItem("blindfold-theme");
 
@@ -81,7 +170,9 @@ export function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [isHistoryOpen, setIsHistoryOpen] = useState(true);
+  const [isEreaderToneOpen, setIsEreaderToneOpen] = useState(false);
   const [attributes, setAttributes] = useState<GameAttributes>(INITIAL_ATTRIBUTES);
+  const [status, setStatus] = useState<GameStatus>(INITIAL_STATUS);
   const isLightTheme = theme === "light";
   const sidebarActions: SidebarAction[] = [
     {
@@ -91,6 +182,22 @@ export function App() {
       isPressed: isLightTheme,
       onClick: () =>
         setTheme((currentTheme) => (currentTheme === "light" ? "dark" : "light"))
+    },
+    {
+      id: "ereader-tone",
+      label: uiText.ereadToneToggleLabel,
+      icon: Sun,
+      isPressed: isEreaderToneOpen,
+      onClick: () =>
+        setIsEreaderToneOpen((current) => {
+          const next = !current;
+
+          if (next) {
+            setIsHistoryOpen(true);
+          }
+
+          return next;
+        })
     },
     {
       id: "audio",
@@ -140,6 +247,16 @@ export function App() {
       if (extractedAttributes) {
         setAttributes(extractedAttributes);
       }
+
+      const extractedInventory = extractInventory(reply);
+      const extractedLocation = extractLocation(reply);
+
+      if (extractedInventory || extractedLocation) {
+        setStatus((currentStatus) => ({
+          inventory: extractedInventory ?? currentStatus.inventory,
+          location: extractedLocation ?? currentStatus.location
+        }));
+      }
     } catch (caughtError) {
       const fallback =
         caughtError instanceof Error ? caughtError.message : uiText.connectionError;
@@ -172,9 +289,13 @@ export function App() {
       <HistoryPanel
         actions={sidebarActions}
         attributes={attributes}
+        ereaderTone={ereadTone}
         history={history}
+        isEreaderToneOpen={isEreaderToneOpen}
         isOpen={isHistoryOpen}
+        onEreaderToneChange={setEreadTone}
         onToggle={() => setIsHistoryOpen((current) => !current)}
+        status={status}
       />
     </main>
   );
