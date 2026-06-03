@@ -2,10 +2,12 @@ import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { uiText } from "../content/uiText";
 import { EreaderToneSlider } from "./EreaderToneSlider";
 import { StateIndicators } from "./StateIndicators";
+import type { AttributeKey } from "../game/attributeChanges";
 import type { GameAttributes, GameStatus, SidebarAction } from "../types";
 
 type HistoryPanelProps = {
   actions: SidebarAction[];
+  attributeChanges?: Partial<Record<AttributeKey, number>> | null;
   attributes: GameAttributes;
   ereaderTone: number;
   isEreaderToneOpen: boolean;
@@ -17,6 +19,7 @@ type HistoryPanelProps = {
 
 export function HistoryPanel({
   actions,
+  attributeChanges,
   attributes,
   ereaderTone,
   isEreaderToneOpen,
@@ -37,44 +40,44 @@ export function HistoryPanel({
       ]
         .filter(Boolean)
         .join(" ")}
-      aria-label={uiText.sessionAriaLabel}
     >
-      <div className="sidebar-top">
-        <h2>{uiText.sessionTitle}</h2>
-        <div className="sidebar-actions" aria-label={uiText.sidebarActionsLabel}>
-          {actions.map((action) => {
-            const ActionIcon = action.icon;
+      <div
+        aria-label={uiText.sidebarActionsLabel}
+        className="sidebar-actions"
+        role="toolbar"
+      >
+        {actions.map((action) => {
+          const ActionIcon = action.icon;
 
-            return (
-              <button
-                aria-label={action.label}
-                aria-pressed={action.isPressed}
-                className={[
-                  "sidebar-action",
-                  action.isActive ? "is-active" : "",
-                  action.isPressed ? "is-pressed" : ""
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                key={action.id}
-                onClick={action.onClick}
-                title={action.label}
-                type="button"
-              >
-                <ActionIcon size={16} strokeWidth={1.5} aria-hidden="true" />
-              </button>
-            );
-          })}
-          <button
-            aria-expanded={isOpen}
-            aria-label={isOpen ? uiText.sessionCollapseLabel : uiText.sessionExpandLabel}
-            className="history-toggle"
-            onClick={onToggle}
-            type="button"
-          >
-            <ToggleIcon size={17} strokeWidth={1.8} aria-hidden="true" />
-          </button>
-        </div>
+          return (
+            <button
+              aria-label={action.label}
+              aria-pressed={action.isPressed}
+              className={[
+                "sidebar-action",
+                action.isActive ? "is-active" : "",
+                action.isPressed ? "is-pressed" : ""
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              key={action.id}
+              onClick={action.onClick}
+              title={action.label}
+              type="button"
+            >
+              <ActionIcon size={16} strokeWidth={1.5} aria-hidden="true" />
+            </button>
+          );
+        })}
+        <button
+          aria-expanded={isOpen}
+          aria-label={isOpen ? uiText.sidebarCollapseLabel : uiText.sidebarExpandLabel}
+          className="history-toggle"
+          onClick={onToggle}
+          type="button"
+        >
+          <ToggleIcon size={17} strokeWidth={1.8} aria-hidden="true" />
+        </button>
       </div>
 
       {isToneControlVisible ? (
@@ -86,6 +89,7 @@ export function HistoryPanel({
 
       <div className="sidebar-footer">
         <StateIndicators
+          attributeChanges={attributeChanges}
           attributes={attributes}
           inventory={status.inventory}
           location={status.location}

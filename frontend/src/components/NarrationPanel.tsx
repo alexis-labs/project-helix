@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadingNarration } from "../content/story";
 import { uiText } from "../content/uiText";
+import type { AttributeKey } from "../game/attributeChanges";
+import { AttributeChangeList } from "./AttributeChangeList";
 
 type NarrationPanelProps = {
+  attributeChanges?: Partial<Record<AttributeKey, number>> | null;
   currentAction: string;
   currentReply: string;
   isLoading: boolean;
 };
 
 export function NarrationPanel({
+  attributeChanges,
   currentAction,
   currentReply,
   isLoading
@@ -20,6 +24,8 @@ export function NarrationPanel({
   );
   const [displayedText, setDisplayedText] = useState(targetText);
   const panelRef = useRef<HTMLElement>(null);
+  const showAttributeChanges =
+    !isLoading && displayedText === targetText && Boolean(currentAction);
 
   useEffect(() => {
     if (shouldReduceMotion || isLoading) {
@@ -71,6 +77,12 @@ export function NarrationPanel({
           <span aria-hidden="true" className="text-cursor" />
         ) : null}
       </p>
+      {showAttributeChanges ? (
+        <AttributeChangeList
+          changes={attributeChanges}
+          className="attribute-change-list--chat"
+        />
+      ) : null}
     </article>
   );
 }

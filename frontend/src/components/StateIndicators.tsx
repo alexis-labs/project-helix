@@ -1,10 +1,12 @@
 import { Backpack, HeartPulse, Map, MapPin, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { uiText } from "../content/uiText";
+import type { AttributeKey } from "../game/attributeChanges";
 import type { GameAttributes } from "../types";
 import { AttributeBars } from "./AttributeBars";
 
 type StateIndicatorsProps = {
+  attributeChanges?: Partial<Record<AttributeKey, number>> | null;
   attributes: GameAttributes;
   inventory: string[];
   location: string;
@@ -68,7 +70,12 @@ function vitalsSummary({ fear, injuries, hunger, exhaustion }: GameAttributes) {
   return uiText.vitalsStableLabel;
 }
 
-export function StateIndicators({ attributes, inventory, location }: StateIndicatorsProps) {
+export function StateIndicators({
+  attributeChanges,
+  attributes,
+  inventory,
+  location
+}: StateIndicatorsProps) {
   const inventoryCount =
     inventory.length === 1
       ? uiText.inventorySingleItemLabel
@@ -102,7 +109,11 @@ export function StateIndicators({ attributes, inventory, location }: StateIndica
         value={vitalsSummary(attributes)}
         variant="vitals"
       >
-        <AttributeBars className="attribute-bars--card" {...attributes} />
+        <AttributeBars
+          changes={attributeChanges}
+          className="attribute-bars--card"
+          {...attributes}
+        />
       </StateIndicator>
     </section>
   );

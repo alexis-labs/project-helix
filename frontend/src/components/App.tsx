@@ -29,6 +29,7 @@ import {
   hasAttributeAtMax,
   type CriticalAttribute
 } from "../game/attributes";
+import { getAttributeDeltas } from "../game/attributeChanges";
 import { buildDiaryEntries, filterDiaryEntries } from "../game/diaryEntries";
 import {
   connectionFailureNarration,
@@ -314,6 +315,16 @@ export function App() {
   );
   const isStorySearchActive = storySearchQuery.trim().length > 0;
 
+  const currentAttributeChanges = useMemo(() => {
+    const lastTurn = history.at(-1);
+
+    if (lastTurn?.role === "narrator") {
+      return lastTurn.attributeChanges ?? null;
+    }
+
+    return null;
+  }, [history]);
+
   function applyGameState(state: ActiveGameState) {
     setCurrentReply(state.currentReply);
     setCurrentAction(state.currentAction);
@@ -408,20 +419,31 @@ export function App() {
     setCanContinue(true);
 
     try {
-      const { reply, usage } = await requestNarration(trimmed, history, nextMemory);
+      const { reply, usage } = await requestNarration(
+        trimmed,
+        history,
+        nextMemory,
+        attributes,
+        status
+      );
       const visibleReply = stripUiStateBlock(reply) || reply;
+      const extractedAttributes = extractAttributes(reply);
+      const nextAttributes = clampAttributes(extractedAttributes ?? attributes);
+      const attributeDeltas = extractedAttributes
+        ? getAttributeDeltas(attributes, nextAttributes)
+        : {};
       const narratorTurn: Turn = {
         role: "narrator",
         content: visibleReply,
-        contextContent: reply
+        contextContent: reply,
+        ...(Object.keys(attributeDeltas).length > 0
+          ? { attributeChanges: attributeDeltas }
+          : {})
       };
       const completedHistory = [...nextHistory, narratorTurn];
 
       setCurrentReply(visibleReply);
       setHistory(completedHistory);
-
-      const extractedAttributes = extractAttributes(reply);
-      const nextAttributes = clampAttributes(extractedAttributes ?? attributes);
 
       if (extractedAttributes) {
         setAttributes(nextAttributes);
@@ -525,12 +547,13 @@ export function App() {
           totalEntries={diaryEntries.length}
         />
         {isMemoryOpen ? (
-          <MemoryPanel centered memory={memory} />
+          <MemoryPanel memory={memory} />
         ) : isStorySearchActive ? (
           <StorySearchResults history={history} query={storySearchQuery} />
         ) : (
           <div className="play-story-stack">
             <NarrationPanel
+              attributeChanges={currentAttributeChanges}
               currentAction={currentAction}
               currentReply={currentReply}
               isLoading={isLoading}
@@ -575,6 +598,7 @@ export function App() {
 
       <HistoryPanel
         actions={sidebarActions}
+        attributeChanges={currentAttributeChanges}
         attributes={attributes}
         ereaderTone={ereadTone}
         isEreaderToneOpen={isEreaderToneOpen}

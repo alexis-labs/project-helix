@@ -1,30 +1,8 @@
+import { gameContent } from "../../../shared/gameContent";
 import type { AdventureMemory, MemorySource, MemoryVariable } from "../types";
 
 export const INITIAL_MEMORY_VARIABLES: MemoryVariable[] = [
-  {
-    key: "objetivo_principal",
-    value: "encontrar_mae",
-    source: "jogador",
-    description: "Encontrar a mãe"
-  },
-  {
-    key: "mae_paradeiro",
-    value: "desconhecido",
-    source: "descoberta",
-    description: "Mãe perdida durante a evacuação"
-  },
-  {
-    key: "abrigo_regras",
-    value: "proibido_sair",
-    source: "externo",
-    description: "Responsáveis proíbem saídas do abrigo"
-  },
-  {
-    key: "infeccao_conhecimento",
-    value: "contacto_visual",
-    source: "descoberta",
-    description: "A infeção transmite-se por contacto visual"
-  }
+  ...gameContent.initialMemoryVariables
 ];
 
 export function createInitialMemory(): AdventureMemory {
@@ -41,6 +19,19 @@ export function indexMemoryVariables(
 
 export function listMemoryVariables(memory: AdventureMemory): MemoryVariable[] {
   return Object.values(memory.variables);
+}
+
+export function formatMemoryToken(token: string): string {
+  return token
+    .trim()
+    .split("_")
+    .filter(Boolean)
+    .map(
+      (word) =>
+        word.charAt(0).toLocaleUpperCase("pt-PT") +
+        word.slice(1).toLocaleLowerCase("pt-PT")
+    )
+    .join(" ");
 }
 
 export function upsertMemoryVariable(

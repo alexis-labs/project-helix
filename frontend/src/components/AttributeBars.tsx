@@ -1,14 +1,20 @@
+import { AttributeChangeList } from "./AttributeChangeList";
+import type { AttributeKey } from "../game/attributeChanges";
 import type { GameAttributes } from "../types";
 
+type AttributeTone = AttributeKey;
+
 type AttributeBarProps = {
+  change?: number;
   label: string;
   value: number;
   max: number;
-  tone: "fear" | "injuries" | "hunger" | "exhaustion";
+  tone: AttributeTone;
 };
 
-function AttributeBar({ label, value, max, tone }: AttributeBarProps) {
+function AttributeBar({ change, label, value, max, tone }: AttributeBarProps) {
   const percentage = (value / max) * 100;
+  const hasChange = change !== undefined && change !== 0;
 
   return (
     <>
@@ -21,16 +27,26 @@ function AttributeBar({ label, value, max, tone }: AttributeBarProps) {
           }}
         />
       </div>
-      <span className="bar-value">{value}</span>
+      <div className="attribute-bar-meta">
+        <span className="bar-value">{value}</span>
+        {hasChange ? (
+          <AttributeChangeList
+            changes={{ [tone]: change }}
+            className="attribute-change-list--bar"
+          />
+        ) : null}
+      </div>
     </>
   );
 }
 
 type AttributeBarsProps = GameAttributes & {
+  changes?: Partial<Record<AttributeKey, number>> | null;
   className?: string;
 };
 
 export function AttributeBars({
+  changes,
   className,
   fear,
   injuries,
@@ -39,10 +55,34 @@ export function AttributeBars({
 }: AttributeBarsProps) {
   return (
     <div className={["attribute-bars", className].filter(Boolean).join(" ")}>
-      <AttributeBar label="Medo" value={fear} max={100} tone="fear" />
-      <AttributeBar label="Ferimentos" value={injuries} max={100} tone="injuries" />
-      <AttributeBar label="Fome" value={hunger} max={100} tone="hunger" />
-      <AttributeBar label="Exaustão" value={exhaustion} max={100} tone="exhaustion" />
+      <AttributeBar
+        change={changes?.fear}
+        label="Medo"
+        value={fear}
+        max={100}
+        tone="fear"
+      />
+      <AttributeBar
+        change={changes?.injuries}
+        label="Ferimentos"
+        value={injuries}
+        max={100}
+        tone="injuries"
+      />
+      <AttributeBar
+        change={changes?.hunger}
+        label="Fome"
+        value={hunger}
+        max={100}
+        tone="hunger"
+      />
+      <AttributeBar
+        change={changes?.exhaustion}
+        label="Exaustão"
+        value={exhaustion}
+        max={100}
+        tone="exhaustion"
+      />
     </div>
   );
 }

@@ -35,7 +35,9 @@ Este ficheiro orienta agentes de IA (Copilot, Claude, etc.) que trabalhem neste 
 - Sem ORM, sem base de dados
 - Respostas JSON simples
 - Fallback local obrigatório quando `OPENAI_API_KEY` está vazio
-- Toda a configuracao LLM/narrativa vive em `backend/src/game/llmConfig.ts`
+- Toda a configuracao LLM vive em `backend/src/game/llmConfig.ts`
+- Prompt narrativo, mundo e regras vivem em `backend/src/game/prompt/`
+- Conteudo inicial do jogo (atributos, inventario, memoria) vive em `shared/gameContent.ts`
 
 ## Regras importantes
 
@@ -59,8 +61,9 @@ npm run dev:frontend     # Terminal 2
 | Quero... | Edito... |
 |----------|----------|
 | Mudar modelo, temperature ou limite de tokens | `backend/src/game/llmConfig.ts` |
-| Mudar prompt, mundo, lore ou regras narrativas | `backend/src/game/llmConfig.ts` |
-| Adicionar respostas offline | `backend/src/game/llmConfig.ts` |
+| Mudar regras do narrador, atributos, NPCs ou formato de resposta | `backend/src/game/prompt/` |
+| Mudar atributos iniciais, inventario, objectivos ou memoria inicial | `shared/gameContent.ts` |
+| Adicionar respostas offline | `backend/src/server.ts` |
 | Mudar texto da UI | `frontend/src/content/uiText.ts` |
 | Mudar narrativa inicial | `frontend/src/content/story.ts` |
 | Mudar estilos visuais | `frontend/src/styles.css` |

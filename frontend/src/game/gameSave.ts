@@ -34,10 +34,30 @@ function isTurn(value: unknown): value is Turn {
   const role = value.role;
   const content = value.content;
 
-  return (
-    (role === "player" || role === "narrator") &&
-    typeof content === "string" &&
-    (value.contextContent === undefined || typeof value.contextContent === "string")
+  if (
+    (role !== "player" && role !== "narrator") ||
+    typeof content !== "string" ||
+    (value.contextContent !== undefined && typeof value.contextContent !== "string")
+  ) {
+    return false;
+  }
+
+  const changes = value.attributeChanges;
+
+  if (changes === undefined) {
+    return true;
+  }
+
+  if (!isRecord(changes)) {
+    return false;
+  }
+
+  const numericKeys = ["fear", "injuries", "hunger", "exhaustion"] as const;
+
+  return Object.entries(changes).every(
+    ([key, delta]) =>
+      numericKeys.includes(key as (typeof numericKeys)[number]) &&
+      typeof delta === "number"
   );
 }
 

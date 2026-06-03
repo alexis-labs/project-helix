@@ -1,9 +1,19 @@
 import type { LucideIcon } from "lucide-react";
 
+import type {
+  GameAttributes,
+  GameStatus,
+  MemorySource,
+  MemoryVariable
+} from "../../shared/types";
+
+export type { GameAttributes, GameStatus, MemorySource, MemoryVariable };
+
 export type Turn = {
   role: "player" | "narrator";
   content: string;
   contextContent?: string;
+  attributeChanges?: Partial<Record<keyof GameAttributes, number>>;
 };
 
 export type SidebarAction = {
@@ -13,27 +23,6 @@ export type SidebarAction = {
   isActive?: boolean;
   isPressed?: boolean;
   onClick: () => void;
-};
-
-export type GameAttributes = {
-  fear: number;
-  injuries: number;
-  hunger: number;
-  exhaustion: number;
-};
-
-export type GameStatus = {
-  location: string;
-  inventory: string[];
-};
-
-export type MemorySource = "jogador" | "externo" | "descoberta";
-
-export type MemoryVariable = {
-  key: string;
-  value: string;
-  source: MemorySource;
-  description: string;
 };
 
 export type AdventureMemory = {

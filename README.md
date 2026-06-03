@@ -133,10 +133,14 @@ Ver [INDEX.md](INDEX.md) para o índice completo.
 
 ```txt
 .
+|-- shared
+|   |-- gameContent.ts
+|   `-- types.ts
 |-- backend
 |   `-- src
 |       |-- game
 |       |   |-- llmConfig.ts
+|       |   |-- prompt/
 |       |   |-- types.ts
 |       `-- server.ts
 |-- frontend
@@ -157,7 +161,9 @@ Ver [INDEX.md](INDEX.md) para o índice completo.
 
 ## Onde editar
 
-- Configuracao LLM, prompt, mundo, regras e fallback offline: `backend/src/game/llmConfig.ts`
+- Configuracao LLM (modelo, tokens, provider): `backend/src/game/llmConfig.ts`
+- Prompt narrativo, regras, NPCs e formato de resposta: `backend/src/game/prompt/`
+- Conteudo inicial do jogo (atributos, inventario, memoria, objectivos): `shared/gameContent.ts`
 - Texto inicial e mensagens de estado: `frontend/src/content/story.ts`
 - Textos fixos da interface: `frontend/src/content/uiText.ts`
 - Chamada ao endpoint: `frontend/src/api/play.ts`
@@ -173,7 +179,18 @@ Pedido:
 ```json
 {
   "message": "escuto atras da porta",
-  "history": []
+  "history": [],
+  "memory": [],
+  "attributes": {
+    "fear": 20,
+    "injuries": 0,
+    "hunger": 10,
+    "exhaustion": 15
+  },
+  "status": {
+    "location": "Abrigo da escola secundária",
+    "inventory": ["Venda improvisada"]
+  }
 }
 ```
 

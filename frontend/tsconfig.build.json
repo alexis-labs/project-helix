@@ -3,7 +3,8 @@
   "compilerOptions": {
     "noEmit": false,
     "outDir": "compiled",
+    "rootDir": "..",
     "tsBuildInfoFile": "compiled/.tsbuildinfo"
   },
-  "include": ["src"]
+  "include": ["src", "../shared"]
 }

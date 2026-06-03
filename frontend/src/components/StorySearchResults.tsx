@@ -1,6 +1,7 @@
 import { useMemo, useRef, useEffect } from "react";
 import { uiText } from "../content/uiText";
 import { buildDiaryEntries, filterDiaryEntries } from "../game/diaryEntries";
+import { AttributeChangeList } from "./AttributeChangeList";
 import { DiaryHighlight } from "./DiaryHighlight";
 import type { Turn } from "../types";
 
@@ -59,6 +60,12 @@ export function StorySearchResults({ history, query }: StorySearchResultsProps) 
                     <p>
                       <DiaryHighlight query={query} text={turn.content} />
                     </p>
+                    {turn.attributeChanges ? (
+                      <AttributeChangeList
+                        changes={turn.attributeChanges}
+                        className="attribute-change-list--diary"
+                      />
+                    ) : null}
                   </section>
                 );
               })}

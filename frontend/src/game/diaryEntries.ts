@@ -1,3 +1,4 @@
+import { formatAttributeChangesForSearch } from "./attributeChanges";
 import type { Turn } from "../types";
 
 export type DiaryEntry = {
@@ -41,7 +42,12 @@ function entrySearchBlob(entry: DiaryEntry, playerLabel: string, narratorLabel: 
   return entry.turns
     .map((turn) => {
       const roleLabel = turn.role === "player" ? playerLabel : narratorLabel;
-      return `${roleLabel} ${turn.content}`;
+      const changes =
+        turn.attributeChanges !== undefined
+          ? formatAttributeChangesForSearch(turn.attributeChanges)
+          : "";
+
+      return `${roleLabel} ${turn.content}${changes ? ` ${changes}` : ""}`;
     })
     .join("\n")
     .toLowerCase();

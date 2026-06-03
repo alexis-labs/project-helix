@@ -5,12 +5,16 @@ import OpenAI from "openai";
 import {
   buildCompletionParams,
   buildSummaryPrompt,
-  llmConfig,
-  systemPrompt
+  llmConfig
 } from "./game/llmConfig.ts";
+import { normalizeAttributes, normalizeStatus } from "./game/gameState.ts";
 import { formatMemoryForPrompt, normalizeMemory } from "./game/memory.ts";
+import {
+  buildBaseSystemPrompt,
+  buildSystemPrompt
+} from "./game/prompt/buildSystemPrompt.ts";
 import { estimateTextTokens } from "./game/tokens.ts";
-import type { ClientTurn, MemoryVariable } from "./game/types.ts";
+import type { ClientTurn, GameAttributes, GameStatus, MemoryVariable } from "./game/types.ts";
 
 const app = express();
 const port = Number(process.env.PORT || 3001);
@@ -26,7 +30,7 @@ const FALLBACK_REPLY = "O silêncio envolve-te. A escuridão continua.";
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
 
-const estimatedSystemPromptTokens = estimateTextTokens(systemPrompt);
+const estimatedSystemPromptTokens = estimateTextTokens(buildBaseSystemPrompt());
 
 app.get("/api/health", (_request, response) => {
   response.json({
@@ -45,6 +49,8 @@ app.post("/api/play", async (request, response) => {
   const message = normalizeText(request.body?.message);
   const history = normalizeHistory(request.body?.history);
   const memory = normalizeMemory(request.body?.memory);
+  const attributes = normalizeAttributes(request.body?.attributes);
+  const status = normalizeStatus(request.body?.status);
 
   if (!message) {
     response.status(400).json({ error: "Mensagem vazia." });
@@ -57,7 +63,13 @@ app.post("/api/play", async (request, response) => {
   }
 
   try {
-    const { reply, usage } = await narrateWithOpenAI(message, history, memory);
+    const { reply, usage } = await narrateWithOpenAI(
+      message,
+      history,
+      memory,
+      attributes,
+      status
+    );
     response.json({ reply, usage });
   } catch (error) {
     const details = formatNarrationError(error);
@@ -94,7 +106,9 @@ app.post("/api/summary", async (request, response) => {
 async function narrateWithOpenAI(
   message: string,
   history: ClientTurn[],
-  memory: MemoryVariable[]
+  memory: MemoryVariable[],
+  attributes?: GameAttributes,
+  status?: GameStatus
 ) {
   if (!openai) {
     return {
@@ -107,9 +121,9 @@ async function narrateWithOpenAI(
     };
   }
 
-  const memoryContext = formatMemoryForPrompt(memory);
+  const systemContent = buildSystemPrompt({ memory, attributes, status });
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    { role: "system", content: `${systemPrompt}${memoryContext}` },
+    { role: "system", content: systemContent },
     ...history.slice(-10).map((turn) => ({
       role: turn.role === "player" ? ("user" as const) : ("assistant" as const),
       content:

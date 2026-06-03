@@ -1,7 +1,7 @@
 import { emptyNarrationFallback } from "../content/story";
 import { uiText } from "../content/uiText";
 import { formatMemoryForApi } from "../game/adventureMemory";
-import type { AdventureMemory, Turn } from "../types";
+import type { AdventureMemory, GameAttributes, GameStatus, Turn } from "../types";
 
 export type PlayUsage = {
   promptTokens: number;
@@ -53,7 +53,9 @@ function resolveApiBase() {
 export async function requestNarration(
   message: string,
   history: Turn[],
-  memory: AdventureMemory
+  memory: AdventureMemory,
+  attributes: GameAttributes,
+  status: GameStatus
 ) {
   const apiBase = resolveApiBase();
   let response: Response;
@@ -65,6 +67,8 @@ export async function requestNarration(
       body: JSON.stringify({
         message,
         memory: formatMemoryForApi(memory),
+        attributes,
+        status,
         history: history.slice(-12).map((turn) => ({
           role: turn.role,
           content: turn.contextContent || turn.content

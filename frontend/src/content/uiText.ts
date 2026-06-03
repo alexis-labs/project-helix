@@ -17,11 +17,9 @@ export const uiText = {
   narratorLabel: "Narrador",
   playerLabel: "Você",
   currentActionLabel: "Ação",
-  sessionTitle: "Sessão",
-  sessionCollapseLabel: "Fechar painel",
-  sessionExpandLabel: "Abrir painel",
-  sessionAriaLabel: "Painel de sessão",
-  sidebarActionsLabel: "Controlos da sessão",
+  sidebarCollapseLabel: "Fechar painel",
+  sidebarExpandLabel: "Abrir painel",
+  sidebarActionsLabel: "Controlos",
   mainAriaLabel: "Blindfold",
   diarySearchLabel: "Pesquisar na história",
   diarySearchPlaceholder: "Palavras, ações, locais...",
@@ -56,10 +54,21 @@ export const uiText = {
   ereadToneMaxHint: "Quente",
   stateIndicatorsAriaLabel: "HUD de mapa, inventário e estado",
   vitalsIndicatorLabel: "Estado",
+  attributeChangesAriaLabel: "Alterações de estado",
+  attributeChangeLabel: (delta: number, name: string) => {
+    const sign = delta > 0 ? "+" : "";
+    return `${sign}${delta} de ${name}`;
+  },
+  attributeNames: {
+    fear: "medo",
+    injuries: "ferimentos",
+    hunger: "fome",
+    exhaustion: "exaustão"
+  } as const,
   vitalsStableLabel: "Estável",
   vitalsStrainedLabel: "Tenso",
   vitalsCriticalLabel: "Crítico",
-  sidebarResizeLabel: "Redimensionar painel da sessão",
+  sidebarResizeLabel: "Redimensionar painel lateral",
   mapIndicatorLabel: "Localização",
   mapCurrentLocationLabel: "Zona atual",
   inventoryIndicatorLabel: "Mochila",
@@ -74,8 +83,11 @@ export const uiText = {
   backendUnreachable:
     "Não foi possível contactar o servidor do jogo. Inicia o backend com «npm run dev:backend» na raiz do projeto (porta 3001) e recarrega a página.",
   memoryTitle: "Memória",
+  memoryLead: "Factos importantes que o narrador guarda sobre a aventura.",
   memoryToggleLabel: "Ver memória da aventura",
   memoryAriaLabel: "Variáveis de memória da aventura",
+  memoryCountLabel: (count: number) =>
+    count === 1 ? "1 facto" : `${count} factos`,
   memoryEmpty: "Ainda não há factos registados na memória.",
   memorySourcePlayer: "Jogador",
   memorySourceExternal: "Externo",

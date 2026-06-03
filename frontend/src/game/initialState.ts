@@ -1,21 +1,15 @@
+import { gameContent } from "../../../shared/gameContent";
 import { openingNarration } from "../content/story";
 import type { AdventureMemory, GameAttributes, GameStatus, Turn } from "../types";
 import { createInitialMemory } from "./adventureMemory";
 
 export const INITIAL_ATTRIBUTES: GameAttributes = {
-  fear: 20,
-  injuries: 0,
-  hunger: 10,
-  exhaustion: 15
+  ...gameContent.initialAttributes
 };
 
 export const INITIAL_STATUS: GameStatus = {
-  location: "Abrigo da escola secundária",
-  inventory: [
-    "Venda improvisada",
-    "Fotografia antiga da mãe",
-    "Garrafa de água meio cheia"
-  ]
+  location: gameContent.initialStatus.location,
+  inventory: [...gameContent.initialStatus.inventory]
 };
 
 export type ActiveGameState = {

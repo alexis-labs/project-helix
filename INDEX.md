@@ -19,10 +19,19 @@ Referência rápida de ficheiros e pastas.
 
 | Caminho | Descrição |
 |---------|-----------|
-| `src/server.ts` | Servidor Express — endpoints `/api/health` e `/api/play` |
-| `src/game/llmConfig.ts` | Configuracao LLM, prompt, mundo, regras narrativas e fallback offline |
-| `src/game/types.ts` | Tipos partilhados do jogo |
+| `src/server.ts` | Servidor Express — endpoints `/api/health`, `/api/play` e `/api/summary` |
+| `src/game/llmConfig.ts` | Configuracao LLM (provider, modelo, tokens) |
+| `src/game/prompt/` | Secções modulares do prompt e compositor `buildSystemPrompt` |
+| `src/game/gameState.ts` | Normalizacao de atributos e status recebidos da API |
+| `src/game/types.ts` | Tipos do backend (re-export de `shared/types.ts`) |
 | `tsconfig.json` | Configuração TypeScript do backend |
+
+## Partilhado (`shared/`)
+
+| Caminho | Descrição |
+|---------|-----------|
+| `gameContent.ts` | Atributos, inventario, memoria inicial, personagem e item pools |
+| `types.ts` | Tipos partilhados entre frontend e backend |
 
 ## Frontend (`frontend/`)
 
@@ -51,7 +60,7 @@ Referência rápida de ficheiros e pastas.
 ```
 Jogador → CommandInput → App.submitAction → fetch /api/play
                                                   ↓
-                              server.ts → llmConfig.ts → OpenAI (ou fallback)
+                              server.ts → buildSystemPrompt → OpenAI (ou fallback)
                                                   ↓
                               reply → NarrationPanel (typewriter)
                                     → HistoryPanel (lista)
