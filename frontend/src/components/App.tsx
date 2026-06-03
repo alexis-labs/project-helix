@@ -112,7 +112,7 @@ export function App() {
     setError("");
 
     try {
-      const reply = await requestNarration(trimmed, nextHistory);
+      const reply = await requestNarration(trimmed, history);
       const narratorTurn: Turn = { role: "narrator", content: reply };
 
       setCurrentReply(reply);

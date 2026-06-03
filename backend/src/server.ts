@@ -2,7 +2,11 @@ import cors from "cors";
 import express from "express";
 import OpenAI from "openai";
 
-import { llmConfig, systemPrompt } from "./game/llmConfig.ts";
+import {
+  buildCompletionParams,
+  llmConfig,
+  systemPrompt
+} from "./game/llmConfig.ts";
 import type { ClientTurn } from "./game/types.ts";
 
 const app = express();
@@ -39,15 +43,18 @@ app.post("/api/play", async (request, response) => {
     return;
   }
 
-  try {
-    const reply = openai
-      ? await narrateWithOpenAI(message, history)
-      : FALLBACK_REPLY;
+  if (!openai) {
+    response.json({ reply: FALLBACK_REPLY });
+    return;
+  }
 
+  try {
+    const reply = await narrateWithOpenAI(message, history);
     response.json({ reply });
   } catch (error) {
-    console.error("Narration error:", error);
-    response.json({ reply: FALLBACK_REPLY });
+    const details = formatNarrationError(error);
+    console.error("Narration error:", details);
+    response.status(503).json({ error: details });
   }
 });
 
@@ -65,17 +72,76 @@ async function narrateWithOpenAI(message: string, history: ClientTurn[]) {
     { role: "user", content: message }
   ];
 
-  const completion = await openai.chat.completions.create({
-    model: llmConfig.model,
-    messages,
-    temperature: llmConfig.temperature,
-    max_completion_tokens: llmConfig.maxCompletionTokens
-  });
+  const completion = await createCompletionWithRetry(messages);
 
   return (
     completion.choices[0]?.message?.content?.trim() ||
     FALLBACK_REPLY
   );
+}
+
+async function createCompletionWithRetry(
+  messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]
+) {
+  const maxAttempts = 3;
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await openai!.chat.completions.create({
+        model: llmConfig.model,
+        messages,
+        ...buildCompletionParams()
+      });
+    } catch (error) {
+      lastError = error;
+
+      if (!isRateLimitError(error) || attempt === maxAttempts) {
+        throw error;
+      }
+
+      const delayMs = 1000 * 2 ** (attempt - 1);
+      console.warn(
+        `LLM rate limited (${llmConfig.model}). Retrying in ${delayMs}ms...`
+      );
+      await sleep(delayMs);
+    }
+  }
+
+  throw lastError;
+}
+
+function isRateLimitError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    error.status === 429
+  );
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function formatNarrationError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return "Falha ao contactar o narrador.";
+  }
+
+  const apiError = error as {
+    status?: number;
+    message?: string;
+    error?: { message?: string };
+  };
+
+  const status = apiError.status ? `[${apiError.status}] ` : "";
+  const message =
+    apiError.error?.message ||
+    apiError.message ||
+    "Falha ao contactar o narrador.";
+
+  return `${status}${message}`.trim();
 }
 
 function normalizeText(value: unknown) {

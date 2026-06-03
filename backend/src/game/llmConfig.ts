@@ -1,6 +1,14 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import dotenv from "dotenv";
 
-dotenv.config({ path: process.env.DOTENV_CONFIG_PATH || "../.env" });
+const repoEnvPath = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../../.env"
+);
+
+dotenv.config({ path: process.env.DOTENV_CONFIG_PATH || repoEnvPath });
 
 export const systemPrompt = `# SISTEMA - NARRADOR INTERATIVO
 
@@ -457,7 +465,12 @@ const readEnv = (name: string) => {
 };
 
 const provider = readEnv("LLM_PROVIDER") || "openrouter";
-const defaultModel = provider === "openai" ? "gpt-4.1-mini" : "openrouter/free";
+const defaultModel =
+  provider === "openai"
+    ? "gpt-4.1-mini"
+    : provider === "google"
+      ? "gemini-2.5-flash"
+      : "openrouter/free";
 const providerKeyName = `${provider.toUpperCase()}_API_KEY`;
 
 export const llmConfig = {
@@ -465,11 +478,27 @@ export const llmConfig = {
   apiKey:
     readEnv("LLM_API_KEY") ||
     readEnv(providerKeyName) ||
-    (provider === "openai" ? readEnv("OPENAI_API_KEY") : undefined),
+    readEnv("OPENAI_API_KEY"),
   baseUrl:
     readEnv("OPENAI_BASE_URL") ||
-    (provider === "openrouter" ? "https://openrouter.ai/api/v1" : undefined),
+    (provider === "openrouter"
+      ? "https://openrouter.ai/api/v1"
+      : provider === "google"
+        ? "https://generativelanguage.googleapis.com/v1beta/openai/"
+        : undefined),
   model: readEnv("OPENAI_MODEL") || defaultModel,
   temperature: 0.85,
-  maxCompletionTokens: 120
+  maxCompletionTokens: 512
 };
+
+export function buildCompletionParams() {
+  const shared = {
+    temperature: llmConfig.temperature
+  };
+
+  if (llmConfig.provider === "google") {
+    return { ...shared, max_tokens: llmConfig.maxCompletionTokens };
+  }
+
+  return { ...shared, max_completion_tokens: llmConfig.maxCompletionTokens };
+}

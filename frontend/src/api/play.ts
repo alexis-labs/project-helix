@@ -4,6 +4,7 @@ import type { Turn } from "../types";
 
 type PlayResponse = {
   reply?: string;
+  error?: string;
 };
 
 export async function requestNarration(message: string, history: Turn[]) {
@@ -17,10 +18,11 @@ export async function requestNarration(message: string, history: Turn[]) {
     })
   });
 
+  const data = (await response.json()) as PlayResponse;
+
   if (!response.ok) {
-    throw new Error(uiText.requestError);
+    throw new Error(data.error?.trim() || uiText.requestError);
   }
 
-  const data = (await response.json()) as PlayResponse;
   return data.reply?.trim() || emptyNarrationFallback;
 }
