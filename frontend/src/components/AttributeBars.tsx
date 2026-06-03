@@ -26,9 +26,19 @@ function AttributeBar({ label, value, max, tone }: AttributeBarProps) {
   );
 }
 
-export function AttributeBars({ fear, injuries, hunger, exhaustion }: GameAttributes) {
+type AttributeBarsProps = GameAttributes & {
+  className?: string;
+};
+
+export function AttributeBars({
+  className,
+  fear,
+  injuries,
+  hunger,
+  exhaustion
+}: AttributeBarsProps) {
   return (
-    <div className="attribute-bars">
+    <div className={["attribute-bars", className].filter(Boolean).join(" ")}>
       <AttributeBar label="Medo" value={fear} max={100} tone="fear" />
       <AttributeBar label="Ferimentos" value={injuries} max={100} tone="injuries" />
       <AttributeBar label="Fome" value={hunger} max={100} tone="hunger" />

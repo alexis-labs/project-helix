@@ -1,8 +1,11 @@
-import { Backpack, Map, MapPin, type LucideIcon } from "lucide-react";
+import { Backpack, HeartPulse, Map, MapPin, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { uiText } from "../content/uiText";
+import type { GameAttributes } from "../types";
+import { AttributeBars } from "./AttributeBars";
 
 type StateIndicatorsProps = {
+  attributes: GameAttributes;
   inventory: string[];
   location: string;
 };
@@ -12,7 +15,7 @@ type StateIndicatorProps = {
   icon: LucideIcon;
   label: string;
   value: string;
-  variant: "location" | "inventory";
+  variant: "location" | "inventory" | "vitals";
 };
 
 function StateIndicator({ children, icon: Icon, label, value, variant }: StateIndicatorProps) {
@@ -68,7 +71,21 @@ function InventoryItems({ inventory }: Pick<StateIndicatorsProps, "inventory">) 
   );
 }
 
-export function StateIndicators({ inventory, location }: StateIndicatorsProps) {
+function vitalsSummary({ fear, injuries, hunger, exhaustion }: GameAttributes) {
+  const peak = Math.max(fear, injuries, hunger, exhaustion);
+
+  if (peak >= 75) {
+    return uiText.vitalsCriticalLabel;
+  }
+
+  if (peak >= 45) {
+    return uiText.vitalsStrainedLabel;
+  }
+
+  return uiText.vitalsStableLabel;
+}
+
+export function StateIndicators({ attributes, inventory, location }: StateIndicatorsProps) {
   const inventoryCount =
     inventory.length === 1
       ? uiText.inventorySingleItemLabel
@@ -95,6 +112,14 @@ export function StateIndicators({ inventory, location }: StateIndicatorsProps) {
         variant="inventory"
       >
         <InventoryItems inventory={inventory} />
+      </StateIndicator>
+      <StateIndicator
+        icon={HeartPulse}
+        label={uiText.vitalsIndicatorLabel}
+        value={vitalsSummary(attributes)}
+        variant="vitals"
+      >
+        <AttributeBars className="attribute-bars--card" {...attributes} />
       </StateIndicator>
     </section>
   );

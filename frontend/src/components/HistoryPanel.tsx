@@ -1,7 +1,6 @@
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { uiText } from "../content/uiText";
-import { AttributeBars } from "./AttributeBars";
 import { EreaderToneSlider } from "./EreaderToneSlider";
 import { StateIndicators } from "./StateIndicators";
 import type { GameAttributes, GameStatus, SidebarAction, Turn } from "../types";
@@ -112,12 +111,10 @@ export function HistoryPanel({
       </ol>
       <div className="sidebar-footer">
         <StateIndicators
+          attributes={attributes}
           inventory={status.inventory}
           location={status.location}
         />
-        <div className="sidebar-attributes">
-          <AttributeBars {...attributes} />
-        </div>
       </div>
     </aside>
   );

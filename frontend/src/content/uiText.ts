@@ -1,6 +1,19 @@
 export const uiText = {
   title: "Blindfold",
   subtitle: "Uma venda. Nenhuma saída visível.",
+  menuAriaLabel: "Menu principal",
+  menuActionsAriaLabel: "Opções do jogo",
+  menuNewGame: "Novo jogo",
+  menuContinue: "Continuar",
+  menuExit: "Sair",
+  menuContinueDisabledHint: "Ainda não existe uma história guardada.",
+  menuExitHint: "Podes fechar este separador do browser para sair.",
+  menuNewGameConfirmTitle: "Apagar gravação?",
+  menuNewGameConfirmMessage:
+    "Iniciar um novo jogo vai substituir a história guardada. Esta ação não pode ser desfeita. Queres mesmo continuar?",
+  menuNewGameConfirmYes: "Sim, começar de novo",
+  menuNewGameConfirmNo: "Cancelar",
+  menuNewGameConfirmAriaLabel: "Confirmar novo jogo",
   narratorLabel: "Narrador",
   playerLabel: "Você",
   currentActionLabel: "Ação",
@@ -28,7 +41,12 @@ export const uiText = {
         : `${value} por cento de luminosidade quente`,
   ereadToneMinHint: "Normal",
   ereadToneMaxHint: "Quente",
-  stateIndicatorsAriaLabel: "HUD de mapa e inventário",
+  stateIndicatorsAriaLabel: "HUD de mapa, inventário e estado",
+  vitalsIndicatorLabel: "Estado",
+  vitalsStableLabel: "Estável",
+  vitalsStrainedLabel: "Tenso",
+  vitalsCriticalLabel: "Crítico",
+  sidebarResizeLabel: "Redimensionar painel da sessão",
   mapIndicatorLabel: "Localização",
   mapCurrentLocationLabel: "Zona atual",
   inventoryIndicatorLabel: "Mochila",
@@ -39,5 +57,7 @@ export const uiText = {
   inventoryItemsAriaLabel: "Itens no inventário",
   inventoryItemsLabel: (count: number) => `${count} itens`,
   requestError: "O narrador ficou em silêncio.",
-  connectionError: "A ligação falhou. Só ouves a tua respiração."
+  connectionError: "A ligação falhou. Só ouves a tua respiração.",
+  backendUnreachable:
+    "Não foi possível contactar o servidor do jogo. Inicia o backend com «npm run dev:backend» na raiz do projeto (porta 3001) e recarrega a página."
 };

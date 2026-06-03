@@ -3,32 +3,26 @@ import { Moon, Sun, Volume2 } from "lucide-react";
 import { requestNarration } from "../api/play";
 import { useAmbientAudio } from "../audio/useAmbientAudio";
 import { useEreaderTone } from "../hooks/useEreaderTone";
+import { useSidebarResize } from "../hooks/useSidebarResize";
+import {
+  clearSavedGame,
+  hasSavedGame,
+  loadSavedGame,
+  saveGame
+} from "../game/gameSave";
+import { createNewGameState } from "../game/initialState";
 import {
   connectionFailureNarration,
   openingNarration
 } from "../content/story";
 import { uiText } from "../content/uiText";
+import type { ActiveGameState } from "../game/initialState";
 import type { GameAttributes, GameStatus, SidebarAction, Turn } from "../types";
 import { CommandInput } from "./CommandInput";
 import { GameHeader } from "./GameHeader";
 import { HistoryPanel } from "./HistoryPanel";
+import { MainMenu } from "./MainMenu";
 import { NarrationPanel } from "./NarrationPanel";
-
-const INITIAL_ATTRIBUTES: GameAttributes = {
-  fear: 20,
-  injuries: 0,
-  hunger: 10,
-  exhaustion: 15
-};
-
-const INITIAL_STATUS: GameStatus = {
-  location: "Abrigo da escola secundária",
-  inventory: [
-    "Venda improvisada",
-    "Fotografia antiga da mãe",
-    "Garrafa de água meio cheia"
-  ]
-};
 
 function stripUiStateBlock(narratorResponse: string) {
   const lines = narratorResponse.split("\n");
@@ -153,9 +147,15 @@ function extractLocation(narratorResponse: string): string | null {
   return null;
 }
 
+function persistProgress(state: ActiveGameState) {
+  saveGame(state);
+}
+
 export function App() {
   const { isAmbientOn, toggleAmbient } = useAmbientAudio();
   const { tone: ereadTone, setTone: setEreadTone } = useEreaderTone();
+  const [screen, setScreen] = useState<"menu" | "playing">("menu");
+  const [canContinue, setCanContinue] = useState(hasSavedGame);
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     const savedTheme = window.localStorage.getItem("blindfold-theme");
 
@@ -171,9 +171,11 @@ export function App() {
   const [error, setError] = useState("");
   const [isHistoryOpen, setIsHistoryOpen] = useState(true);
   const [isEreaderToneOpen, setIsEreaderToneOpen] = useState(false);
-  const [attributes, setAttributes] = useState<GameAttributes>(INITIAL_ATTRIBUTES);
-  const [status, setStatus] = useState<GameStatus>(INITIAL_STATUS);
+  const [attributes, setAttributes] = useState(createNewGameState().attributes);
+  const [status, setStatus] = useState(createNewGameState().status);
   const isLightTheme = theme === "light";
+  const { isResizing, shellStyle, sidebarWidth, startResize } =
+    useSidebarResize(isHistoryOpen);
   const sidebarActions: SidebarAction[] = [
     {
       id: "theme",
@@ -214,6 +216,38 @@ export function App() {
     window.localStorage.setItem("blindfold-theme", theme);
   }, [theme]);
 
+  function applyGameState(state: ActiveGameState) {
+    setCurrentReply(state.currentReply);
+    setCurrentAction(state.currentAction);
+    setHistory(state.history);
+    setAttributes(state.attributes);
+    setStatus(state.status);
+    setMessage("");
+    setError("");
+    setIsLoading(false);
+  }
+
+  function startNewGame() {
+    clearSavedGame();
+    const freshState = createNewGameState();
+    applyGameState(freshState);
+    persistProgress(freshState);
+    setCanContinue(true);
+    setScreen("playing");
+  }
+
+  function continueGame() {
+    const saved = loadSavedGame();
+
+    if (!saved) {
+      setCanContinue(false);
+      return;
+    }
+
+    applyGameState(saved);
+    setScreen("playing");
+  }
+
   async function submitAction(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = message.trim();
@@ -231,6 +265,15 @@ export function App() {
     setIsLoading(true);
     setError("");
 
+    persistProgress({
+      currentReply,
+      currentAction: trimmed,
+      history: nextHistory,
+      attributes,
+      status
+    });
+    setCanContinue(true);
+
     try {
       const reply = await requestNarration(trimmed, history);
       const visibleReply = stripUiStateBlock(reply) || reply;
@@ -239,37 +282,80 @@ export function App() {
         content: visibleReply,
         contextContent: reply
       };
+      const completedHistory = [...nextHistory, narratorTurn];
 
       setCurrentReply(visibleReply);
-      setHistory((previous) => [...previous, narratorTurn]);
+      setHistory(completedHistory);
 
       const extractedAttributes = extractAttributes(reply);
+      const nextAttributes = extractedAttributes ?? attributes;
+
       if (extractedAttributes) {
         setAttributes(extractedAttributes);
       }
 
       const extractedInventory = extractInventory(reply);
       const extractedLocation = extractLocation(reply);
+      const nextStatus: GameStatus =
+        extractedInventory || extractedLocation
+          ? {
+              inventory: extractedInventory ?? status.inventory,
+              location: extractedLocation ?? status.location
+            }
+          : status;
 
       if (extractedInventory || extractedLocation) {
-        setStatus((currentStatus) => ({
-          inventory: extractedInventory ?? currentStatus.inventory,
-          location: extractedLocation ?? currentStatus.location
-        }));
+        setStatus(nextStatus);
       }
+
+      persistProgress({
+        currentReply: visibleReply,
+        currentAction: trimmed,
+        history: completedHistory,
+        attributes: nextAttributes,
+        status: nextStatus
+      });
+      setCanContinue(true);
     } catch (caughtError) {
       const fallback =
         caughtError instanceof Error ? caughtError.message : uiText.connectionError;
 
       setError(fallback);
       setCurrentReply(connectionFailureNarration);
+
+      persistProgress({
+        currentReply: connectionFailureNarration,
+        currentAction: trimmed,
+        history: nextHistory,
+        attributes,
+        status
+      });
     } finally {
       setIsLoading(false);
     }
   }
 
+  if (screen === "menu") {
+    return (
+      <MainMenu
+        canContinue={canContinue}
+        onContinue={continueGame}
+        onNewGame={startNewGame}
+      />
+    );
+  }
+
   return (
-    <main className={isHistoryOpen ? "game-shell" : "game-shell is-history-collapsed"}>
+    <main
+      className={[
+        "game-shell",
+        isHistoryOpen ? "is-sidebar-open" : "is-history-collapsed",
+        isResizing ? "is-sidebar-resizing" : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      style={shellStyle}
+    >
       <section className="play-area" aria-label={uiText.mainAriaLabel}>
         <GameHeader />
         <NarrationPanel
@@ -285,6 +371,20 @@ export function App() {
         />
         {error ? <p className="error-text">{error}</p> : null}
       </section>
+
+      {isHistoryOpen ? (
+        <div
+          aria-label={uiText.sidebarResizeLabel}
+          aria-orientation="vertical"
+          aria-valuemax={560}
+          aria-valuemin={280}
+          aria-valuenow={sidebarWidth}
+          className="sidebar-resize-handle"
+          onPointerDown={startResize}
+          role="separator"
+          tabIndex={0}
+        />
+      ) : null}
 
       <HistoryPanel
         actions={sidebarActions}

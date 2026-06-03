@@ -353,15 +353,6 @@ Extremamente contra qualquer fuga.
 
 Pode tornar-se inimigo.
 
----
-
-## Tiago
-
-Rapaz de 14 anos.
-
-Também perdeu a família.
-
-Pode tornar-se aliado.
 
 ---
 

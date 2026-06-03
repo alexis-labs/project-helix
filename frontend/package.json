@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "compile": "tsc -p tsconfig.build.json",
-    "dev": "npm run compile && vite --host 127.0.0.1 --port 5173",
+    "dev": "npm run compile && vite",
     "build": "npm run compile && vite build --minify false",
     "preview": "vite preview"
   },
