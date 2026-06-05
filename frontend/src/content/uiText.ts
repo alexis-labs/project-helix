@@ -111,6 +111,7 @@ export const uiText = {
   skillsSettingsLabel: "Skills",
   skillsSettingsDescription:
     "Memorias e lore da aventura consultadas pelo modelo via ferramentas.",
+  sandboxBackToChatLabel: "Voltar ao chat",
   skillsSearchPlaceholder: "Pesquisar por titulo, descricao ou id...",
   skillsIdLabel: "ID",
   skillsDeleteAriaLabel: (title: string) => `Remover skill ${title}`,

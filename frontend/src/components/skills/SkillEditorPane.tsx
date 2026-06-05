@@ -8,7 +8,6 @@ import {
   type SkillSelection
 } from "../../game/skillsTree";
 import {
-  createManualSkill,
   deleteFolder,
   deleteSkillFromState,
   duplicateSkill,

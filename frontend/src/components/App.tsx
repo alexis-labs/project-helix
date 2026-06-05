@@ -925,6 +925,7 @@ export function App() {
         attributes={attributes}
         isOpen={isHistoryOpen}
         onOpenSettings={openSettingsPanel}
+        onBackToChat={() => setActiveCenterPanel(null)}
         onToggle={() => setIsHistoryOpen((current) => !current)}
         status={status}
       />

@@ -1,4 +1,4 @@
-import { BookMarked, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { ArrowLeft, BookMarked, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { settingsNavItems, type SettingsSection } from "./AdventureSettingsPanel";
 import { uiText } from "../content/uiText";
 import { StateIndicators } from "./StateIndicators";
@@ -15,6 +15,7 @@ type HistoryPanelProps = {
   attributeChanges?: Partial<Record<AttributeKey, number>> | null;
   attributes: GameAttributes;
   isOpen: boolean;
+  onBackToChat: () => void;
   onOpenSettings: (section: SettingsSection) => void;
   onToggle: () => void;
   status: GameStatus;
@@ -26,6 +27,7 @@ export function HistoryPanel({
   attributeChanges,
   attributes,
   isOpen,
+  onBackToChat,
   onOpenSettings,
   onToggle,
   status
@@ -86,6 +88,17 @@ export function HistoryPanel({
               <h2>Sandbox</h2>
             </div>
           </div>
+
+          {activeSettingsSection ? (
+            <button
+              className="settings-back-to-chat"
+              onClick={onBackToChat}
+              type="button"
+            >
+              <ArrowLeft size={15} strokeWidth={1.7} aria-hidden="true" />
+              <span>{uiText.sandboxBackToChatLabel}</span>
+            </button>
+          ) : null}
 
           <nav className="settings-nav" aria-label="Abrir definicoes no centro">
             {settingsNavItems.map((item) => {
