@@ -1,5 +1,5 @@
-import { formatMemoryForApi } from "./adventureMemory";
-import type { AdventureMemory, Turn } from "../types";
+import { formatFoldersForApi, formatSkillsForApi } from "./adventureSkills";
+import type { AdventureSkills, Turn } from "../types";
 
 export const DEFAULT_CONTEXT_WINDOW = 128_000;
 
@@ -26,7 +26,7 @@ function estimateTextTokens(text: string): number {
 function stripTechnicalBlocks(text: string) {
   const lines = text.split("\n");
   const blockStart = lines.findIndex((line) =>
-    /^(ESTADO_UI:|MEMORIA:|MEDO:)/i.test(line.trim())
+    /^(ESTADO_UI:|MEDO:)/i.test(line.trim())
   );
 
   if (blockStart === -1) {
@@ -36,24 +36,34 @@ function stripTechnicalBlocks(text: string) {
   return lines.slice(0, blockStart).join("\n").trim();
 }
 
-function formatMemoryTokens(memory: AdventureMemory): string {
-  const variables = formatMemoryForApi(memory);
+function formatSkillsIndexTokens(skills: AdventureSkills): string {
+  const entries = formatSkillsForApi(skills);
+  const folders = formatFoldersForApi(skills);
+  const folderNames = new Map(folders.map((folder) => [folder.id, folder.name]));
 
-  if (variables.length === 0) {
+  if (entries.length === 0 && folders.length === 0) {
     return "";
   }
 
-  return variables
-    .map(
-      (entry) =>
-        `- ${entry.key}: ${entry.value} | ${entry.source} | ${entry.description}`
-    )
-    .join("\n");
+  const lines: string[] = [];
+
+  for (const folder of folders) {
+    lines.push(`[${folder.name}]`);
+  }
+
+  for (const skill of entries) {
+    const prefix = skill.folderId && folderNames.has(skill.folderId)
+      ? `[${folderNames.get(skill.folderId)}] `
+      : "";
+    lines.push(`${prefix}- ${skill.id}: ${skill.title} | ${skill.description}`);
+  }
+
+  return lines.join("\n");
 }
 
 export function estimateNextRequestTokens(input: {
   history: Turn[];
-  memory: AdventureMemory;
+  skills: AdventureSkills;
   draftMessage: string;
   limits: ContextLimits;
 }): number {
@@ -69,11 +79,11 @@ export function estimateNextRequestTokens(input: {
     })
     .join("\n");
 
-  const memoryText = formatMemoryTokens(input.memory);
+  const skillsText = formatSkillsIndexTokens(input.skills);
 
   return (
     input.limits.estimatedSystemPromptTokens +
-    estimateTextTokens(memoryText) +
+    estimateTextTokens(skillsText) +
     estimateTextTokens(historyText) +
     estimateTextTokens(input.draftMessage)
   );

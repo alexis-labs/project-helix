@@ -1,7 +1,7 @@
 import { uiText } from "../content/uiText";
-import { formatMemoryForApi } from "../game/adventureMemory";
+import { formatFoldersForApi, formatSkillsForApi } from "../game/adventureSkills";
 import type { CriticalAttribute } from "../game/attributes";
-import type { AdventureMemory, AdventureSettings, Turn } from "../types";
+import type { AdventureSettings, AdventureSkills, Turn } from "../types";
 
 type SummaryResponse = {
   summary?: string;
@@ -28,7 +28,7 @@ export function buildLocalSummary(cause: CriticalAttribute) {
 
 export async function requestStorySummary(
   history: Turn[],
-  memory: AdventureMemory,
+  skills: AdventureSkills,
   cause: CriticalAttribute,
   adventureSettings: AdventureSettings
 ) {
@@ -43,7 +43,8 @@ export async function requestStorySummary(
         cause,
         model: adventureSettings.selectedModel,
         adventureSettings,
-        memory: formatMemoryForApi(memory),
+        skills: formatSkillsForApi(skills),
+        folders: formatFoldersForApi(skills),
         history: history.slice(-12).map((turn) => ({
           role: turn.role,
           content: turn.contextContent || turn.content

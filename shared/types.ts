@@ -10,11 +10,24 @@ export type GameStatus = {
   inventory: string[];
 };
 
-export type MemorySource = "jogador" | "externo" | "descoberta";
+export type SkillSource = "jogador" | "externo" | "descoberta";
 
-export type MemoryVariable = {
-  key: string;
-  value: string;
-  source: MemorySource;
+export type SkillFolder = {
+  id: string;
+  name: string;
+  parentId: string | null;
+};
+
+export type AdventureSkill = {
+  id: string;
+  folderId: string | null;
+  title: string;
   description: string;
+  content: string;
+  source: SkillSource;
+};
+
+export type AdventureSkills = {
+  folders: Record<string, SkillFolder>;
+  skills: Record<string, AdventureSkill>;
 };

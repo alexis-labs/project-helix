@@ -36,19 +36,19 @@ export const OPENROUTER_MODELS = [
     description: "Equilibrado, rapido e bom para narracao curta."
   },
   {
-    id: "nvidia/nemotron-3-ultra-550b-a55b:free",
-    label: "Nemotron 3 Ultra Free",
+    id: "nvidia/nemotron-3-nano-30b-a3b:free",
+    label: "Nemotron 3 Nano Free",
     provider: "NVIDIA",
-    contextWindowTokens: 128_000,
-    description: "Opcao gratuita para testes.",
+    contextWindowTokens: 256_000,
+    description: "Modelo gratuito oficial da NVIDIA para chat e agentes.",
     isFree: true
   },
   {
-    id: "nvidia/nemotron-3.5-content-safety:free",
-    label: "Nemotron 3.5 Content Safety Free",
-    provider: "NVIDIA",
+    id: "openrouter/free",
+    label: "OpenRouter Free Router",
+    provider: "OpenRouter",
     contextWindowTokens: 128_000,
-    description: "Modelo gratuito focado em moderacao e seguranca de conteudo.",
+    description: "Router gratuito que escolhe um modelo free disponivel.",
     isFree: true
   }
 ] as const satisfies OpenRouterModelOption[];

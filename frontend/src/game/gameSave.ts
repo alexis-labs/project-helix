@@ -3,18 +3,28 @@ import {
   resolveOpenRouterModel
 } from "../../../shared/adventureSettings";
 import type { ActiveGameState } from "./initialState";
-import { createInitialMemory } from "./adventureMemory";
+import {
+  createInitialSkills,
+  ensureDefaultSkillLibrary,
+  mergeImportedSkills,
+  migrateMemoryToSkills,
+  migrateSkillsToV7,
+  parseAdditionalMemoriesToSkills
+} from "./adventureSkills";
 import type {
   AdventureMemory,
   AdventureSettings,
+  AdventureSkill,
+  AdventureSkills,
   GameAttributes,
   GameStatus,
   MemoryVariable,
+  SkillFolder,
   Turn
 } from "../types";
 
 const STORAGE_KEY = "blindfold-save";
-const SAVE_VERSION = 5;
+const SAVE_VERSION = 7;
 
 export type SavedGamePayload = {
   version: number;
@@ -24,6 +34,7 @@ export type SavedGamePayload = {
   history: Turn[];
   attributes: GameAttributes;
   status: GameStatus;
+  skills?: AdventureSkills;
   memory?: AdventureMemory;
   adventureSettings?: AdventureSettings;
 };
@@ -92,6 +103,60 @@ function isStatus(value: unknown): value is GameStatus {
   );
 }
 
+function isSkillSource(value: unknown): value is AdventureSkill["source"] {
+  return value === "jogador" || value === "externo" || value === "descoberta";
+}
+
+function isSkillFolder(value: unknown): value is SkillFolder {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const parentId = value.parentId;
+
+  return (
+    typeof value.id === "string" &&
+    typeof value.name === "string" &&
+    (parentId === null || parentId === undefined || typeof parentId === "string")
+  );
+}
+
+function isSkill(value: unknown): value is AdventureSkill {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const folderId = value.folderId;
+
+  return (
+    typeof value.id === "string" &&
+    typeof value.title === "string" &&
+    typeof value.description === "string" &&
+    typeof value.content === "string" &&
+    isSkillSource(value.source) &&
+    (folderId === undefined ||
+      folderId === null ||
+      typeof folderId === "string")
+  );
+}
+
+function isSkills(value: unknown): value is AdventureSkills {
+  if (!isRecord(value) || !isRecord(value.skills)) {
+    return false;
+  }
+
+  const folders = value.folders;
+
+  if (
+    folders !== undefined &&
+    (!isRecord(folders) || !Object.values(folders).every(isSkillFolder))
+  ) {
+    return false;
+  }
+
+  return Object.values(value.skills).every(isSkill);
+}
+
 function isMemoryVariable(value: unknown): value is MemoryVariable {
   if (!isRecord(value)) {
     return false;
@@ -103,7 +168,7 @@ function isMemoryVariable(value: unknown): value is MemoryVariable {
     typeof value.key === "string" &&
     typeof value.value === "string" &&
     typeof value.description === "string" &&
-    (source === "jogador" || source === "externo" || source === "descoberta")
+    isSkillSource(source)
   );
 }
 
@@ -194,6 +259,35 @@ function normalizeAdventureSettings(value: unknown): AdventureSettings {
   };
 }
 
+function migrateLegacySave(
+  saved: SavedGamePayload,
+  adventureSettings: AdventureSettings
+): { skills: AdventureSkills; adventureSettings: AdventureSettings } {
+  let skills = saved.skills && isSkills(saved.skills)
+    ? saved.skills
+    : createInitialSkills();
+
+  if (saved.memory && isMemory(saved.memory)) {
+    skills = mergeImportedSkills(skills, Object.values(migrateMemoryToSkills(saved.memory).skills));
+  }
+
+  const imported = parseAdditionalMemoriesToSkills(
+    adventureSettings.additionalMemories
+  );
+
+  if (imported.length > 0) {
+    skills = mergeImportedSkills(skills, imported);
+  }
+
+  return {
+    skills: ensureDefaultSkillLibrary(migrateSkillsToV7(skills)),
+    adventureSettings: {
+      ...adventureSettings,
+      additionalMemories: ""
+    }
+  };
+}
+
 function parseSavedGame(raw: string): SavedGamePayload | null {
   try {
     const parsed: unknown = JSON.parse(raw);
@@ -204,7 +298,7 @@ function parseSavedGame(raw: string): SavedGamePayload | null {
 
     const version = parsed.version;
 
-    if (![1, 2, 3, 4, SAVE_VERSION].includes(Number(version))) {
+    if (![1, 2, 3, 4, 5, SAVE_VERSION].includes(Number(version))) {
       return null;
     }
 
@@ -220,7 +314,16 @@ function parseSavedGame(raw: string): SavedGamePayload | null {
       return null;
     }
 
-    if (Number(version) >= 2 && parsed.memory !== undefined && !isMemory(parsed.memory)) {
+    if (Number(version) >= SAVE_VERSION && parsed.skills !== undefined && !isSkills(parsed.skills)) {
+      return null;
+    }
+
+    if (
+      Number(version) >= 2 &&
+      Number(version) < SAVE_VERSION &&
+      parsed.memory !== undefined &&
+      !isMemory(parsed.memory)
+    ) {
       return null;
     }
 
@@ -249,6 +352,9 @@ export function loadSavedGame(): ActiveGameState | null {
     return null;
   }
 
+  const adventureSettings = normalizeAdventureSettings(saved.adventureSettings);
+  const migrated = migrateLegacySave(saved, adventureSettings);
+
   return {
     currentReply: saved.currentReply,
     currentAction: saved.currentAction,
@@ -258,8 +364,8 @@ export function loadSavedGame(): ActiveGameState | null {
       location: saved.status.location,
       inventory: [...saved.status.inventory]
     },
-    memory: saved.memory ?? createInitialMemory(),
-    adventureSettings: normalizeAdventureSettings(saved.adventureSettings)
+    skills: migrated.skills,
+    adventureSettings: migrated.adventureSettings
   };
 }
 
@@ -272,7 +378,7 @@ export function saveGame(state: ActiveGameState) {
     history: state.history,
     attributes: state.attributes,
     status: state.status,
-    memory: state.memory,
+    skills: state.skills,
     adventureSettings: state.adventureSettings
   };
 

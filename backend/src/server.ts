@@ -8,7 +8,14 @@ import {
 } from "../../shared/adventureSettings.ts";
 import { buildCompletionParams, llmConfig } from "./game/llmConfig.ts";
 import { normalizeAttributes, normalizeStatus } from "./game/gameState.ts";
-import { normalizeMemory } from "./game/memory.ts";
+import {
+  executeConsultSkill,
+  executeSaveSkill,
+  normalizeFolders,
+  normalizeSkills,
+  SKILL_TOOLS,
+  type SaveSkillInput
+} from "./game/skills.ts";
 import {
   buildBaseSystemPrompt,
   buildSummaryPrompt,
@@ -18,10 +25,11 @@ import {
 import { estimateTextTokens } from "./game/tokens.ts";
 import type {
   AdventureSettings,
+  AdventureSkill,
   ClientTurn,
   GameAttributes,
   GameStatus,
-  MemoryVariable
+  SkillFolder
 } from "./game/types.ts";
 
 const app = express();
@@ -34,6 +42,7 @@ const openai = llmConfig.apiKey
   : null;
 
 const FALLBACK_REPLY = "";
+const MAX_TOOL_ITERATIONS = 6;
 
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
@@ -57,7 +66,8 @@ app.get("/api/health", (_request, response) => {
 app.post("/api/play", async (request, response) => {
   const message = normalizeText(request.body?.message);
   const history = normalizeHistory(request.body?.history);
-  const memory = normalizeMemory(request.body?.memory);
+  const skills = normalizeSkills(request.body?.skills);
+  const folders = normalizeFolders(request.body?.folders);
   const attributes = normalizeAttributes(request.body?.attributes);
   const status = normalizeStatus(request.body?.status);
   const adventureSettings = normalizeAdventureSettings(
@@ -73,21 +83,22 @@ app.post("/api/play", async (request, response) => {
   }
 
   if (!openai) {
-    response.json({ reply: FALLBACK_REPLY });
+    response.json({ reply: FALLBACK_REPLY, skillUpdates: [] });
     return;
   }
 
   try {
-    const { reply, usage } = await narrateWithOpenAI(
+    const { reply, skillUpdates, usage } = await narrateWithOpenAI(
       message,
       history,
-      memory,
+      skills,
+      folders,
       attributes,
       status,
       adventureSettings,
       model
     );
-    response.json({ reply, usage });
+    response.json({ reply, skillUpdates, usage });
   } catch (error) {
     const details = formatNarrationError(error);
     console.error("Narration error:", details);
@@ -98,6 +109,8 @@ app.post("/api/play", async (request, response) => {
 app.post("/api/summary", async (request, response) => {
   const history = normalizeHistory(request.body?.history);
   const cause = normalizeCause(request.body?.cause);
+  const skills = normalizeSkills(request.body?.skills);
+  const folders = normalizeFolders(request.body?.folders);
   const adventureSettings = normalizeAdventureSettings(
     request.body?.adventureSettings
   );
@@ -120,6 +133,8 @@ app.post("/api/summary", async (request, response) => {
       history,
       cause,
       adventureSettings,
+      skills,
+      folders,
       model
     );
     response.json({ summary });
@@ -133,7 +148,8 @@ app.post("/api/summary", async (request, response) => {
 async function narrateWithOpenAI(
   message: string,
   history: ClientTurn[],
-  _memory: MemoryVariable[],
+  skills: AdventureSkill[],
+  folders: SkillFolder[],
   attributes?: GameAttributes,
   status?: GameStatus,
   adventureSettings?: AdventureSettings,
@@ -142,6 +158,7 @@ async function narrateWithOpenAI(
   if (!openai) {
     return {
       reply: FALLBACK_REPLY,
+      skillUpdates: [] as AdventureSkill[],
       usage: {
         promptTokens: 0,
         totalTokens: 0,
@@ -153,6 +170,8 @@ async function narrateWithOpenAI(
   const systemContent = buildSystemPrompt({
     attributes,
     status,
+    skills,
+    folders,
     adventureSettings
   });
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
@@ -169,28 +188,163 @@ async function narrateWithOpenAI(
     { role: "user", content: message }
   ];
 
-  const completion = await createCompletionWithRetry(
+  const modelContextLimit =
+    adventureSettings?.llm.contextWindowTokens || getModelContextWindow(model);
+
+  try {
+    const agentResult = await runSkillAgentLoop(
+      messages,
+      skills,
+      folders,
+      model,
+      adventureSettings
+    );
+
+    return {
+      reply: agentResult.reply,
+      skillUpdates: agentResult.skillUpdates,
+      usage: {
+        promptTokens: agentResult.promptTokens,
+        totalTokens: agentResult.totalTokens,
+        contextLimit: modelContextLimit
+      }
+    };
+  } catch (error) {
+    if (!isToolUnsupportedError(error)) {
+      throw error;
+    }
+
+    console.warn(
+      `Model ${model} may not support tool calling. Falling back to plain completion.`
+    );
+
+    const completion = await createCompletionWithRetry(
+      messages,
+      model,
+      adventureSettings
+    );
+
+    return {
+      reply: completion.choices[0]?.message?.content?.trim() || FALLBACK_REPLY,
+      skillUpdates: [] as AdventureSkill[],
+      usage: {
+        promptTokens: completion.usage?.prompt_tokens ?? 0,
+        totalTokens: completion.usage?.total_tokens ?? 0,
+        contextLimit: modelContextLimit
+      }
+    };
+  }
+}
+
+async function runSkillAgentLoop(
+  messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+  initialSkills: AdventureSkill[],
+  folders: SkillFolder[],
+  model: string,
+  adventureSettings?: AdventureSettings
+) {
+  let workingSkills = [...initialSkills];
+  const skillUpdates: AdventureSkill[] = [];
+  let promptTokens = 0;
+  let totalTokens = 0;
+
+  for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration += 1) {
+    const completion = await createCompletionWithRetry(
+      messages,
+      model,
+      adventureSettings,
+      SKILL_TOOLS
+    );
+
+    promptTokens += completion.usage?.prompt_tokens ?? 0;
+    totalTokens += completion.usage?.total_tokens ?? 0;
+
+    const assistantMessage = completion.choices[0]?.message;
+
+    if (!assistantMessage) {
+      return {
+        reply: FALLBACK_REPLY,
+        skillUpdates,
+        promptTokens,
+        totalTokens
+      };
+    }
+
+    const toolCalls = assistantMessage.tool_calls ?? [];
+
+    if (toolCalls.length === 0) {
+      return {
+        reply: assistantMessage.content?.trim() || FALLBACK_REPLY,
+        skillUpdates,
+        promptTokens,
+        totalTokens
+      };
+    }
+
+    messages.push({
+      role: "assistant",
+      content: assistantMessage.content,
+      tool_calls: toolCalls
+    });
+
+    for (const toolCall of toolCalls) {
+      if (toolCall.type !== "function") {
+        continue;
+      }
+
+      const toolName = toolCall.function.name;
+      const args = parseToolArguments(toolCall.function.arguments);
+      let toolContent = "";
+
+      try {
+        if (toolName === "consultar_skill") {
+          toolContent = executeConsultSkill(workingSkills, args);
+        } else if (toolName === "guardar_skill") {
+          const result = executeSaveSkill(workingSkills, folders, args);
+          workingSkills = result.skills;
+          skillUpdates.push(result.skill);
+          toolContent = `Skill guardada: ${result.skill.id} (${result.skill.title}).`;
+        } else {
+          toolContent = `Ferramenta desconhecida: ${toolName}.`;
+        }
+      } catch (toolError) {
+        toolContent =
+          toolError instanceof Error
+            ? toolError.message
+            : "Falha ao executar a ferramenta.";
+      }
+
+      messages.push({
+        role: "tool",
+        tool_call_id: toolCall.id,
+        content: toolContent
+      });
+    }
+  }
+
+  const finalCompletion = await createCompletionWithRetry(
     messages,
     model,
     adventureSettings
   );
-  const modelContextLimit =
-    adventureSettings?.llm.contextWindowTokens || getModelContextWindow(model);
+
+  promptTokens += finalCompletion.usage?.prompt_tokens ?? 0;
+  totalTokens += finalCompletion.usage?.total_tokens ?? 0;
 
   return {
-    reply: completion.choices[0]?.message?.content?.trim() || FALLBACK_REPLY,
-    usage: {
-      promptTokens: completion.usage?.prompt_tokens ?? 0,
-      totalTokens: completion.usage?.total_tokens ?? 0,
-      contextLimit: modelContextLimit
-    }
+    reply:
+      finalCompletion.choices[0]?.message?.content?.trim() || FALLBACK_REPLY,
+    skillUpdates,
+    promptTokens,
+    totalTokens
   };
 }
 
 async function createCompletionWithRetry(
   messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
   model: string,
-  adventureSettings?: AdventureSettings
+  adventureSettings?: AdventureSettings,
+  tools?: OpenAI.Chat.Completions.ChatCompletionTool[]
 ) {
   const maxAttempts = 4;
   let lastError: unknown;
@@ -200,6 +354,7 @@ async function createCompletionWithRetry(
       return await openai!.chat.completions.create({
         model,
         messages,
+        ...(tools ? { tools, tool_choice: "auto" as const } : {}),
         ...buildCompletionParams(adventureSettings?.llm)
       });
     } catch (error) {
@@ -224,6 +379,8 @@ async function summarizeStoryWithOpenAI(
   history: ClientTurn[],
   cause: GameOverCause,
   adventureSettings: AdventureSettings,
+  skills: AdventureSkill[],
+  folders: SkillFolder[],
   model: string
 ) {
   if (!openai) {
@@ -239,7 +396,7 @@ async function summarizeStoryWithOpenAI(
     )
     .join("\n\n");
 
-  const systemContent = buildSummaryPrompt(cause, adventureSettings);
+  const systemContent = buildSummaryPrompt(cause, adventureSettings, skills, folders);
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     ...(systemContent.trim()
       ? [{ role: "system" as const, content: systemContent }]
@@ -259,6 +416,42 @@ async function summarizeStoryWithOpenAI(
   return completion.choices[0]?.message?.content?.trim() || buildFallbackSummary(cause);
 }
 
+function parseToolArguments(raw: string): SaveSkillInput | { query?: string } {
+  if (!raw.trim()) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(raw) as SaveSkillInput | { query?: string };
+  } catch {
+    return {};
+  }
+}
+
+function isToolUnsupportedError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const apiError = error as {
+    status?: number;
+    message?: string;
+    error?: { message?: string };
+  };
+
+  if (apiError.status !== 400) {
+    return false;
+  }
+
+  const message = `${apiError.error?.message || apiError.message || ""}`.toLowerCase();
+
+  return (
+    message.includes("tool") ||
+    message.includes("function") ||
+    message.includes("unsupported")
+  );
+}
+
 function isRetryableError(error: unknown) {
   if (typeof error !== "object" || error === null || !("status" in error)) {
     return false;
@@ -271,7 +464,7 @@ function isRetryableError(error: unknown) {
 function stripUiStateBlock(text: string) {
   const lines = text.split("\n");
   const stateBlockStart = lines.findIndex((line) =>
-    /^(ESTADO_UI:|MEMORIA:|MEDO:)/i.test(line.trim())
+    /^(ESTADO_UI:|MEDO:)/i.test(line.trim())
   );
 
   if (stateBlockStart === -1) {

@@ -15,9 +15,11 @@ import {
 } from "../game/gameSave";
 import { createNewGameState } from "../game/initialState";
 import {
-  mergeMemoryFromResponse,
-  recordPlayerActionMemory
-} from "../game/adventureMemory";
+  createManualSkill,
+  mergeSkillUpdates,
+  recordPlayerActionSkill,
+  upsertSkillInState
+} from "../game/adventureSkills";
 import {
   estimateNextRequestTokens,
   getFallbackContextLimits,
@@ -39,8 +41,8 @@ import {
 import { uiText } from "../content/uiText";
 import type { ActiveGameState } from "../game/initialState";
 import type {
-  AdventureMemory,
   AdventureSettings,
+  AdventureSkills,
   GameAttributes,
   GameStatus,
   SidebarAction,
@@ -50,12 +52,13 @@ import {
   AdventureSettingsPanel,
   type SettingsSection
 } from "./AdventureSettingsPanel";
+import { AttributeChangeOverlay } from "./AttributeChangeOverlay";
 import { CommandInput } from "./CommandInput";
 import { GameHeader } from "./GameHeader";
 import { GameOverPanel } from "./GameOverPanel";
 import { HistoryPanel } from "./HistoryPanel";
 import { MainMenu } from "./MainMenu";
-import { MemoryPanel } from "./MemoryPanel";
+import { SkillsPanel } from "./SkillsPanel";
 import { NarrationPanel } from "./NarrationPanel";
 import { StorySearchBar } from "./StorySearchBar";
 import { StorySearchResults } from "./StorySearchResults";
@@ -63,7 +66,7 @@ import { StorySearchResults } from "./StorySearchResults";
 function stripUiStateBlock(narratorResponse: string) {
   const lines = narratorResponse.split("\n");
   const stateBlockStart = lines.findIndex((line) =>
-    /^(ESTADO_UI:|MEMORIA:|MEDO:)/i.test(line.trim())
+    /^(ESTADO_UI:|MEDO:)/i.test(line.trim())
   );
 
   if (stateBlockStart === -1) {
@@ -309,7 +312,7 @@ export function App() {
   const [activeCenterPanel, setActiveCenterPanel] = useState<CenterPanel>(null);
   const [attributes, setAttributes] = useState(createNewGameState().attributes);
   const [status, setStatus] = useState(createNewGameState().status);
-  const [memory, setMemory] = useState<AdventureMemory>(createNewGameState().memory);
+  const [skills, setSkills] = useState<AdventureSkills>(createNewGameState().skills);
   const [adventureSettings, setAdventureSettings] = useState<AdventureSettings>(
     createNewGameState().adventureSettings
   );
@@ -397,11 +400,11 @@ export function App() {
     () =>
       estimateNextRequestTokens({
         history,
-        memory,
+        skills,
         draftMessage: message,
         limits: contextLimits
       }),
-    [history, memory, message, contextLimits]
+    [history, skills, message, contextLimits]
   );
 
   const contextUsedTokens =
@@ -427,6 +430,7 @@ export function App() {
   );
   const isStorySearchActive = storySearchQuery.trim().length > 0;
   const activeSettingsSection = getSettingsSection(activeCenterPanel);
+  const isSandboxSettingsOpen = activeSettingsSection !== null;
 
   const currentAttributeChanges = useMemo(() => {
     const lastTurn = history.at(-1);
@@ -444,7 +448,7 @@ export function App() {
     setHistory(state.history);
     setAttributes(state.attributes);
     setStatus(state.status);
-    setMemory(state.memory);
+    setSkills(state.skills);
     setAdventureSettings(state.adventureSettings);
     setTheme(state.adventureSettings.appearance.theme);
     setEreadTone(state.adventureSettings.appearance.ereaderTone);
@@ -469,7 +473,7 @@ export function App() {
       history,
       attributes,
       status,
-      memory,
+      skills,
       adventureSettings: nextSettings
     });
   }
@@ -487,7 +491,7 @@ export function App() {
       history,
       attributes: nextAttributes,
       status,
-      memory,
+      skills,
       adventureSettings
     });
   }
@@ -505,19 +509,60 @@ export function App() {
       history,
       attributes,
       status: nextStatus,
-      memory,
+      skills,
       adventureSettings
     });
+  }
+
+  function updateSkills(nextSkills: AdventureSkills) {
+    setSkills(nextSkills);
+
+    if (screen !== "playing") {
+      return;
+    }
+
+    persistProgress({
+      currentReply,
+      currentAction,
+      history,
+      attributes,
+      status,
+      skills: nextSkills,
+      adventureSettings
+    });
+  }
+
+  function updateInventory(nextInventory: string[]) {
+    updateStatus({
+      ...status,
+      inventory: nextInventory
+    });
+  }
+
+  function addManualSkill(input: {
+    title: string;
+    description: string;
+    content: string;
+  }) {
+    const skill = createManualSkill(skills, input);
+
+    if (!skill) {
+      return;
+    }
+
+    updateSkills(upsertSkillInState(skills, skill));
   }
 
   function applySandboxConfiguration(
     nextSettings: AdventureSettings,
     nextAttributes: GameAttributes,
-    nextStatus: GameStatus
+    nextStatus: GameStatus,
+    nextSkills: AdventureSkills
   ) {
     setAdventureSettings(nextSettings);
     setAttributes(nextAttributes);
     setStatus(nextStatus);
+    setSkills(nextSkills);
     setTheme(nextSettings.appearance.theme);
     setEreadTone(nextSettings.appearance.ereaderTone);
     setFontScale(nextSettings.appearance.fontScale);
@@ -532,7 +577,7 @@ export function App() {
       history,
       attributes: nextAttributes,
       status: nextStatus,
-      memory,
+      skills: nextSkills,
       adventureSettings: nextSettings
     });
   }
@@ -546,7 +591,7 @@ export function App() {
   async function triggerGameOver(
     cause: CriticalAttribute,
     completedHistory: Turn[],
-    nextMemory: AdventureMemory,
+    nextSkills: AdventureSkills,
     settings: AdventureSettings
   ) {
     setGameOver({ cause, summary: "", isSummaryLoading: true });
@@ -555,7 +600,7 @@ export function App() {
 
     const summary = await requestStorySummary(
       completedHistory,
-      nextMemory,
+      nextSkills,
       cause,
       settings
     );
@@ -602,7 +647,7 @@ export function App() {
         void triggerGameOver(
           cause,
           saved.history,
-          saved.memory,
+          saved.skills,
           saved.adventureSettings
         );
       }
@@ -619,11 +664,11 @@ export function App() {
 
     const playerTurn: Turn = { role: "player", content: trimmed };
     const nextHistory = [...history, playerTurn];
-    const nextMemory = recordPlayerActionMemory(memory, trimmed);
+    const nextSkills = recordPlayerActionSkill(skills, trimmed);
 
     setCurrentAction(trimmed);
     setHistory(nextHistory);
-    setMemory(nextMemory);
+    setSkills(nextSkills);
     setMessage("");
     setStorySearchQuery("");
     setActiveCenterPanel(null);
@@ -636,16 +681,16 @@ export function App() {
       history: nextHistory,
       attributes,
       status,
-      memory: nextMemory,
+      skills: nextSkills,
       adventureSettings
     });
     setCanContinue(true);
 
     try {
-      const { reply, usage } = await requestNarration(
+      const { reply, skillUpdates, usage } = await requestNarration(
         trimmed,
         history,
-        nextMemory,
+        nextSkills,
         attributes,
         status,
         adventureSettings
@@ -687,8 +732,8 @@ export function App() {
         setStatus(nextStatus);
       }
 
-      const nextMemoryFromReply = mergeMemoryFromResponse(nextMemory, reply);
-      setMemory(nextMemoryFromReply);
+      const nextSkillsFromReply = mergeSkillUpdates(nextSkills, skillUpdates);
+      setSkills(nextSkillsFromReply);
 
       if (usage) {
         setContextLimits((current) => ({
@@ -707,7 +752,7 @@ export function App() {
         history: completedHistory,
         attributes: nextAttributes,
         status: nextStatus,
-        memory: nextMemoryFromReply,
+        skills: nextSkillsFromReply,
         adventureSettings
       });
 
@@ -718,7 +763,7 @@ export function App() {
           await triggerGameOver(
             cause,
             completedHistory,
-            nextMemoryFromReply,
+            nextSkillsFromReply,
             adventureSettings
           );
         }
@@ -740,7 +785,7 @@ export function App() {
         history: nextHistory,
         attributes,
         status,
-        memory: nextMemory,
+        skills: nextSkills,
         adventureSettings
       });
     } finally {
@@ -769,76 +814,94 @@ export function App() {
         .join(" ")}
       style={shellStyle}
     >
-      <section className="play-area" aria-label={uiText.mainAriaLabel}>
-        <GameHeader />
-        <StorySearchBar
-          onQueryChange={(query) => {
-            setStorySearchQuery(query);
+      <section
+        className={[
+          "play-area",
+          isSandboxSettingsOpen ? "is-sandbox-settings" : ""
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        aria-label={uiText.mainAriaLabel}
+      >
+        {isSandboxSettingsOpen ? (
+          <AdventureSettingsPanel
+            activeSection={activeSettingsSection}
+            adventureSettings={adventureSettings}
+            attributes={attributes}
+            skills={skills}
+            status={status}
+            onApplyChanges={applySandboxConfiguration}
+            onClose={() => setActiveCenterPanel(null)}
+            onInventoryChange={updateInventory}
+            onSectionChange={openSettingsPanel}
+          />
+        ) : (
+          <>
+            <GameHeader />
+            <StorySearchBar
+              onQueryChange={(query) => {
+                setStorySearchQuery(query);
 
-            if (query.trim()) {
-              setActiveCenterPanel(null);
-            }
-          }}
-          query={storySearchQuery}
-          resultCount={filteredDiaryEntries.length}
-          totalEntries={diaryEntries.length}
-        />
-        <div className="play-main-panel">
-          <div
-            aria-hidden={activeCenterPanel !== null || isStorySearchActive}
-            className={[
-              "play-story-stack",
-              activeCenterPanel !== null || isStorySearchActive
-                ? "is-view-hidden"
-                : ""
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            hidden={activeCenterPanel !== null || isStorySearchActive}
-          >
-            <NarrationPanel
-              attributeChanges={currentAttributeChanges}
-              currentAction={currentAction}
-              currentReply={currentReply}
-              isLoading={isLoading}
+                if (query.trim()) {
+                  setActiveCenterPanel(null);
+                }
+              }}
+              query={storySearchQuery}
+              resultCount={filteredDiaryEntries.length}
+              totalEntries={diaryEntries.length}
             />
-            {gameOver ? (
-              <GameOverPanel
-                cause={gameOver.cause}
-                isLoading={gameOver.isSummaryLoading}
-                onReturnToMenu={returnToMenu}
-                summary={gameOver.summary}
+            <AttributeChangeOverlay
+              changes={currentAttributeChanges}
+              pulseKey={history.length}
+            />
+            <div className="play-main-panel">
+              <div
+                aria-hidden={activeCenterPanel !== null || isStorySearchActive}
+                className={[
+                  "play-story-stack",
+                  activeCenterPanel !== null || isStorySearchActive
+                    ? "is-view-hidden"
+                    : ""
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                hidden={activeCenterPanel !== null || isStorySearchActive}
+              >
+                <NarrationPanel
+                  attributeChanges={currentAttributeChanges}
+                  currentAction={currentAction}
+                  currentReply={currentReply}
+                  isLoading={isLoading}
+                />
+                {gameOver ? (
+                  <GameOverPanel
+                    cause={gameOver.cause}
+                    isLoading={gameOver.isSummaryLoading}
+                    onReturnToMenu={returnToMenu}
+                    summary={gameOver.summary}
+                  />
+                ) : null}
+              </div>
+              {isStorySearchActive ? (
+                <StorySearchResults history={history} query={storySearchQuery} />
+              ) : activeCenterPanel === "diary" ? (
+                <SkillsPanel skills={skills} onAddSkill={addManualSkill} />
+              ) : null}
+            </div>
+            {!gameOver ? (
+              <CommandInput
+                contextLimitTokens={contextLimits.contextWindowTokens}
+                contextPercent={contextPercent}
+                contextUsedTokens={contextUsedTokens}
+                isLoading={isLoading}
+                message={message}
+                onMessageChange={setMessage}
+                onSubmit={submitAction}
               />
             ) : null}
-          </div>
-          {isStorySearchActive ? (
-            <StorySearchResults history={history} query={storySearchQuery} />
-          ) : activeCenterPanel === "diary" ? (
-            <MemoryPanel memory={memory} />
-          ) : activeSettingsSection ? (
-            <AdventureSettingsPanel
-              activeSection={activeSettingsSection}
-              adventureSettings={adventureSettings}
-              attributes={attributes}
-              status={status}
-              onApplyChanges={applySandboxConfiguration}
-              onClose={() => setActiveCenterPanel(null)}
-              onSectionChange={openSettingsPanel}
-            />
-          ) : null}
-        </div>
-        {!gameOver ? (
-          <CommandInput
-            contextLimitTokens={contextLimits.contextWindowTokens}
-            contextPercent={contextPercent}
-            contextUsedTokens={contextUsedTokens}
-            isLoading={isLoading}
-            message={message}
-            onMessageChange={setMessage}
-            onSubmit={submitAction}
-          />
-        ) : null}
-        {error ? <p className="error-text">{error}</p> : null}
+            {error ? <p className="error-text">{error}</p> : null}
+          </>
+        )}
       </section>
 
       {isHistoryOpen ? (

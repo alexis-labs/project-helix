@@ -16,7 +16,7 @@ const readEnv = (name: string) => {
 };
 
 const provider = "openrouter";
-const defaultModel = "nvidia/nemotron-3.5-content-safety:free";
+const defaultModel = "mistralai/mistral-nemo";
 
 export const llmConfig = {
   provider,

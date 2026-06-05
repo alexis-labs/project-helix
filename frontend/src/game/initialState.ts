@@ -1,12 +1,12 @@
 import { DEFAULT_ADVENTURE_SETTINGS } from "../../../shared/adventureSettings";
 import type {
-  AdventureMemory,
   AdventureSettings,
+  AdventureSkills,
   GameAttributes,
   GameStatus,
   Turn
 } from "../types";
-import { createInitialMemory } from "./adventureMemory";
+import { createInitialSkills } from "./adventureSkills";
 
 export const INITIAL_ATTRIBUTES: GameAttributes = {
   fear: 0,
@@ -26,7 +26,7 @@ export type ActiveGameState = {
   history: Turn[];
   attributes: GameAttributes;
   status: GameStatus;
-  memory: AdventureMemory;
+  skills: AdventureSkills;
   adventureSettings: AdventureSettings;
 };
 
@@ -40,7 +40,7 @@ export function createNewGameState(): ActiveGameState {
       location: INITIAL_STATUS.location,
       inventory: [...INITIAL_STATUS.inventory]
     },
-    memory: createInitialMemory(),
+    skills: createInitialSkills(),
     adventureSettings: structuredClone(DEFAULT_ADVENTURE_SETTINGS)
   };
 }

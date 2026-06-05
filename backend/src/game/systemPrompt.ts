@@ -3,11 +3,19 @@ import {
   DEFAULT_ADVENTURE_SETTINGS,
   resolveOpenRouterModel
 } from "../../../shared/adventureSettings.ts";
-import type { GameAttributes, GameStatus } from "../../../shared/types.ts";
+import type {
+  AdventureSkill,
+  GameAttributes,
+  GameStatus,
+  SkillFolder
+} from "../../../shared/types.ts";
+import { formatSkillsIndexForPrompt } from "./skills.ts";
 
 export type BuildSystemPromptInput = {
   attributes?: GameAttributes;
   status?: GameStatus;
+  skills?: AdventureSkill[];
+  folders?: SkillFolder[];
   adventureSettings?: AdventureSettings;
 };
 
@@ -95,6 +103,12 @@ function formatStats(attributes?: GameAttributes) {
     return "";
   }
 
+  const hasRuntimeStats = Object.values(attributes).some((value) => value > 0);
+
+  if (!hasRuntimeStats) {
+    return "";
+  }
+
   return [
     "# STATS",
     `MEDO: ${attributes.fear}/100`,
@@ -105,24 +119,21 @@ function formatStats(attributes?: GameAttributes) {
 }
 
 function formatItems(status?: GameStatus) {
-  if (!status) {
+  if (!status || status.inventory.length === 0) {
     return "";
   }
 
-  const items =
-    status.inventory.length > 0
-      ? status.inventory.map((item) => `- ${item}`).join("\n")
-      : "(vazio)";
+  const items = status.inventory.map((item) => `- ${item}`).join("\n");
 
   return ["# ITEMS", items].join("\n");
 }
 
 function formatLocation(status?: GameStatus) {
-  if (!status) {
+  if (!status || !status.location.trim()) {
     return "";
   }
 
-  return ["# LOCALIZACAO", status.location || "(vazio)"].join("\n");
+  return ["# LOCALIZACAO", status.location.trim()].join("\n");
 }
 
 export function buildSystemPrompt(input: BuildSystemPromptInput) {
@@ -132,9 +143,7 @@ export function buildSystemPrompt(input: BuildSystemPromptInput) {
     formatStats(input.attributes),
     formatItems(input.status),
     formatLocation(input.status),
-    settings.additionalMemories.trim()
-      ? `# MEMORIAS ADICIONAIS\n${settings.additionalMemories.trim()}`
-      : ""
+    formatSkillsIndexForPrompt(input.skills ?? [], input.folders ?? [])
   ].filter((section) => section.trim().length > 0);
 
   return sections.join("\n\n");
@@ -144,13 +153,16 @@ export function buildBaseSystemPrompt() {
   return "";
 }
 
-export function buildSummaryPrompt(cause: string, settings: AdventureSettings) {
+export function buildSummaryPrompt(
+  cause: string,
+  settings: AdventureSettings,
+  skills: AdventureSkill[] = [],
+  folders: SkillFolder[] = []
+) {
   const sections = [
     settings.prompt.trim(),
     `Resume o final da sessao de forma breve. Causa: ${cause}.`,
-    settings.additionalMemories.trim()
-      ? `Memorias adicionais:\n${settings.additionalMemories.trim()}`
-      : ""
+    formatSkillsIndexForPrompt(skills, folders)
   ].filter((section) => section.trim().length > 0);
 
   return sections.join("\n\n");

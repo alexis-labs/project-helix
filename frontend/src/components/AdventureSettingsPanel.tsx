@@ -5,24 +5,34 @@ import {
   Backpack,
   BrainCircuit,
   CheckCircle2,
+  Plus,
   RefreshCw,
   MapPin,
   NotebookText,
   Palette,
   ScrollText,
+  Trash2,
   X
 } from "lucide-react";
 import { OPENROUTER_MODELS } from "../../../shared/adventureSettings";
+import { uiText } from "../content/uiText";
+import { cloneSkills } from "../game/adventureSkills";
 import { EreaderToneSlider } from "./EreaderToneSlider";
 import { FontSizeSlider } from "./FontSizeSlider";
-import type { AdventureSettings, GameAttributes, GameStatus } from "../types";
+import { SkillsWorkbench } from "./skills/SkillsWorkbench";
+import type {
+  AdventureSettings,
+  AdventureSkills,
+  GameAttributes,
+  GameStatus
+} from "../types";
 
 export type SettingsSection =
   | "prompt"
   | "stats"
   | "items"
   | "location"
-  | "memories"
+  | "skills"
   | "models"
   | "appearance";
 
@@ -30,13 +40,16 @@ type AdventureSettingsPanelProps = {
   activeSection: SettingsSection;
   adventureSettings: AdventureSettings;
   attributes: GameAttributes;
+  skills: AdventureSkills;
   status: GameStatus;
   onApplyChanges: (
     settings: AdventureSettings,
     attributes: GameAttributes,
-    status: GameStatus
+    status: GameStatus,
+    skills: AdventureSkills
   ) => void;
   onClose: () => void;
+  onInventoryChange: (inventory: string[]) => void;
   onSectionChange: (section: SettingsSection) => void;
 };
 
@@ -76,10 +89,10 @@ const settingsTabs: {
     icon: MapPin
   },
   {
-    id: "memories",
+    id: "skills",
     group: "Sandbox",
-    label: "Memorias adicionais",
-    description: "Notas livres adicionadas ao system prompt.",
+    label: uiText.skillsSettingsLabel,
+    description: uiText.skillsSettingsDescription,
     icon: NotebookText
   },
   {
@@ -113,16 +126,22 @@ function clampStat(value: number) {
   return Math.min(100, Math.max(0, Math.round(value)));
 }
 
-function splitLines(value: string) {
-  return value
-    .split("\n")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-}
+const statFields: {
+  key: keyof GameAttributes;
+  label: string;
+  tone: "fear" | "injuries" | "hunger" | "exhaustion";
+}[] = [
+  { key: "fear", label: "Medo", tone: "fear" },
+  { key: "injuries", label: "Ferimentos", tone: "injuries" },
+  { key: "hunger", label: "Fome", tone: "hunger" },
+  { key: "exhaustion", label: "Exaustao", tone: "exhaustion" }
+];
 
-function joinLines(values: string[]) {
-  return values.join("\n");
-}
+const llmParamHints: Record<keyof AdventureSettings["llm"], string> = {
+  temperature: "0 = deterministico, 2 = mais criativo.",
+  maxCompletionTokens: "Limite de tokens gerados por resposta.",
+  contextWindowTokens: "Janela de contexto enviada ao modelo."
+};
 
 function cloneSettings(settings: AdventureSettings): AdventureSettings {
   return structuredClone(settings);
@@ -143,14 +162,17 @@ function areDraftsEqual(
   settings: AdventureSettings,
   attributes: GameAttributes,
   status: GameStatus,
+  skills: AdventureSkills,
   draftSettings: AdventureSettings,
   draftAttributes: GameAttributes,
-  draftStatus: GameStatus
+  draftStatus: GameStatus,
+  draftSkills: AdventureSkills
 ) {
   return (
     JSON.stringify(settings) === JSON.stringify(draftSettings) &&
     JSON.stringify(attributes) === JSON.stringify(draftAttributes) &&
-    JSON.stringify(status) === JSON.stringify(draftStatus)
+    JSON.stringify(status) === JSON.stringify(draftStatus) &&
+    JSON.stringify(skills) === JSON.stringify(draftSkills)
   );
 }
 
@@ -158,9 +180,11 @@ export function AdventureSettingsPanel({
   activeSection,
   adventureSettings,
   attributes,
+  skills,
   status,
   onApplyChanges,
   onClose,
+  onInventoryChange,
   onSectionChange
 }: AdventureSettingsPanelProps) {
   const activeTab =
@@ -172,6 +196,8 @@ export function AdventureSettingsPanel({
     cloneAttributes(attributes)
   );
   const [draftStatus, setDraftStatus] = useState(() => cloneStatus(status));
+  const [draftSkills, setDraftSkills] = useState(() => cloneSkills(skills));
+  const [newInventoryItem, setNewInventoryItem] = useState("");
   const [applyStatus, setApplyStatus] = useState<
     "idle" | "dirty" | "success" | "error"
   >("idle");
@@ -179,9 +205,11 @@ export function AdventureSettingsPanel({
     adventureSettings,
     attributes,
     status,
+    skills,
     draftSettings,
     draftAttributes,
-    draftStatus
+    draftStatus,
+    draftSkills
   );
   const visibleApplyStatus = hasDraftChanges ? "dirty" : applyStatus;
 
@@ -196,6 +224,10 @@ export function AdventureSettingsPanel({
   useEffect(() => {
     setDraftStatus(cloneStatus(status));
   }, [status]);
+
+  useEffect(() => {
+    setDraftSkills(cloneSkills(skills));
+  }, [skills]);
 
   useEffect(() => {
     if (applyStatus !== "success") {
@@ -214,14 +246,6 @@ export function AdventureSettingsPanel({
     setDraftSettings({
       ...draftSettings,
       prompt
-    });
-  }
-
-  function updateAdditionalMemories(additionalMemories: string) {
-    setApplyStatus("dirty");
-    setDraftSettings({
-      ...draftSettings,
-      additionalMemories
     });
   }
 
@@ -263,16 +287,67 @@ export function AdventureSettingsPanel({
     });
   }
 
-  function handleThemeChange(event: ChangeEvent<HTMLSelectElement>) {
+  function handleThemeChange(event: ChangeEvent<HTMLInputElement>) {
     updateAppearance({
       ...draftSettings.appearance,
       theme: event.target.value === "light" ? "light" : "dark"
     });
   }
 
+  function commitInventory(inventory: string[]) {
+    const nextInventory = inventory
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    setDraftStatus({
+      ...draftStatus,
+      inventory: nextInventory
+    });
+    onInventoryChange(nextInventory);
+    setApplyStatus("success");
+  }
+
+  function addInventoryItem() {
+    const item = newInventoryItem.trim();
+
+    if (!item) {
+      return;
+    }
+
+    commitInventory([...draftStatus.inventory, item]);
+    setNewInventoryItem("");
+  }
+
+  function updateInventoryDraft(index: number, value: string) {
+    const nextInventory = draftStatus.inventory.map((item, itemIndex) =>
+      itemIndex === index ? value : item
+    );
+
+    setApplyStatus("dirty");
+    setDraftStatus({
+      ...draftStatus,
+      inventory: nextInventory
+    });
+  }
+
+  function commitInventoryDraft() {
+    commitInventory(draftStatus.inventory);
+  }
+
+  function removeInventoryItem(index: number) {
+    commitInventory(
+      draftStatus.inventory.filter((_item, itemIndex) => itemIndex !== index)
+    );
+  }
+
+  function updateDraftSkills(nextSkills: AdventureSkills) {
+    setApplyStatus("dirty");
+    setDraftSkills(nextSkills);
+  }
+
   function applyDrafts() {
     try {
-      onApplyChanges(draftSettings, draftAttributes, draftStatus);
+      onApplyChanges(draftSettings, draftAttributes, draftStatus, draftSkills);
       setApplyStatus("success");
     } catch {
       setApplyStatus("error");
@@ -296,45 +371,51 @@ export function AdventureSettingsPanel({
 
   return (
     <section className="settings-view" aria-label="Definicoes da sandbox">
-      <header className="settings-view-header">
-        <div>
-          <p>{activeTab.group}</p>
-          <h2>{activeTab.label}</h2>
-          <span>{activeTab.description}</span>
-        </div>
-        <button
-          aria-label="Fechar definicoes"
-          className="settings-close-button"
-          onClick={onClose}
-          type="button"
-        >
-          <X size={18} strokeWidth={1.8} aria-hidden="true" />
-        </button>
-      </header>
+      <div className="settings-view-top">
+        <header className="settings-view-header">
+          <h2 className="settings-view-title" title={activeTab.description}>
+            <span className="settings-view-kicker">{activeTab.group}</span>
+            <span aria-hidden="true" className="settings-view-kicker-sep">
+              ·
+            </span>
+            <span>{activeTab.label}</span>
+          </h2>
+          <button
+            aria-label="Fechar definicoes"
+            className="settings-close-button"
+            onClick={onClose}
+            type="button"
+          >
+            <X size={16} strokeWidth={1.8} aria-hidden="true" />
+          </button>
+        </header>
 
-      <nav className="settings-view-tabs" aria-label="Secoes das definicoes">
-        {settingsTabs.map((tab) => {
-          const Icon = tab.icon;
+        <nav className="settings-view-tabs" aria-label="Secoes das definicoes">
+          {settingsTabs.map((tab) => {
+            const Icon = tab.icon;
 
-          return (
-            <button
-              aria-current={activeSection === tab.id ? "page" : undefined}
-              className={[
-                "settings-nav-item",
-                activeSection === tab.id ? "is-active" : ""
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              key={tab.id}
-              onClick={() => onSectionChange(tab.id)}
-              type="button"
-            >
-              <Icon size={15} strokeWidth={1.6} aria-hidden="true" />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+            return (
+              <button
+                aria-current={activeSection === tab.id ? "page" : undefined}
+                aria-label={tab.description}
+                className={[
+                  "settings-nav-item",
+                  activeSection === tab.id ? "is-active" : ""
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                key={tab.id}
+                onClick={() => onSectionChange(tab.id)}
+                title={tab.label}
+                type="button"
+              >
+                <Icon size={14} strokeWidth={1.6} aria-hidden="true" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
 
       <div className="settings-view-body">
         <button
@@ -351,164 +432,254 @@ export function AdventureSettingsPanel({
 
         {activeSection === "prompt" ? (
           <section className="settings-section" aria-label="Prompt">
-            <label className="settings-field">
-              <span>Prompt</span>
-              <textarea
-                value={draftSettings.prompt}
-                onChange={(event) => updatePrompt(event.target.value)}
-                rows={14}
-              />
-            </label>
+            <div className="settings-panel-card settings-prompt-editor">
+              <p className="settings-panel-card-hint">
+                Instrucoes de sistema enviadas ao modelo no inicio de cada turno.
+                Deixa vazio para usar o comportamento por defeito.
+              </p>
+              <label className="settings-field settings-field--editor">
+                <span>Prompt do sistema</span>
+                <textarea
+                  className="settings-prompt-textarea"
+                  onChange={(event) => updatePrompt(event.target.value)}
+                  placeholder="Ex.: Mantem o tom sombrio e descreve o ambiente com detalhe sensorial..."
+                  rows={16}
+                  value={draftSettings.prompt}
+                />
+              </label>
+              <div className="settings-prompt-footer">
+                <span>Clica «Atualizar alteracoes» para guardar.</span>
+                <span>
+                  {draftSettings.prompt.length.toLocaleString("pt-PT")} caracteres
+                </span>
+              </div>
+            </div>
           </section>
         ) : null}
 
         {activeSection === "stats" ? (
           <section className="settings-section" aria-label="Stats">
-            <div className="llm-config-grid">
-              <label className="settings-field">
-                <span>Medo</span>
-                <input
-                  max={100}
-                  min={0}
-                  onChange={(event) =>
-                    updateAttribute("fear", Number(event.target.value))
-                  }
-                  type="number"
-                  value={draftAttributes.fear}
-                />
-              </label>
-              <label className="settings-field">
-                <span>Ferimentos</span>
-                <input
-                  max={100}
-                  min={0}
-                  onChange={(event) =>
-                    updateAttribute("injuries", Number(event.target.value))
-                  }
-                  type="number"
-                  value={draftAttributes.injuries}
-                />
-              </label>
-              <label className="settings-field">
-                <span>Fome</span>
-                <input
-                  max={100}
-                  min={0}
-                  onChange={(event) =>
-                    updateAttribute("hunger", Number(event.target.value))
-                  }
-                  type="number"
-                  value={draftAttributes.hunger}
-                />
-              </label>
-              <label className="settings-field">
-                <span>Exaustao</span>
-                <input
-                  max={100}
-                  min={0}
-                  onChange={(event) =>
-                    updateAttribute("exhaustion", Number(event.target.value))
-                  }
-                  type="number"
-                  value={draftAttributes.exhaustion}
-                />
-              </label>
+            <p className="settings-section-lead">
+              Valores de 0 a 100. Sao enviados ao modelo como estado atual do
+              personagem.
+            </p>
+            <div className="settings-stat-grid">
+              {statFields.map(({ key, label, tone }) => {
+                const value = draftAttributes[key];
+
+                return (
+                  <div
+                    className={`settings-stat-card settings-stat-card--${tone}`}
+                    key={key}
+                  >
+                    <div className="settings-stat-card-head">
+                      <span className="settings-stat-card-label">{label}</span>
+                      <input
+                        aria-label={`${label} valor`}
+                        className="settings-stat-number"
+                        max={100}
+                        min={0}
+                        onChange={(event) =>
+                          updateAttribute(key, Number(event.target.value))
+                        }
+                        type="number"
+                        value={value}
+                      />
+                    </div>
+                    <div className="bar-container settings-stat-bar">
+                      <div
+                        className="bar-fill"
+                        style={{ width: `${value}%` }}
+                      />
+                    </div>
+                    <input
+                      aria-label={`${label} controlo deslizante`}
+                      className="settings-stat-slider"
+                      max={100}
+                      min={0}
+                      onChange={(event) =>
+                        updateAttribute(key, Number(event.target.value))
+                      }
+                      type="range"
+                      value={value}
+                    />
+                  </div>
+                );
+              })}
             </div>
           </section>
         ) : null}
 
         {activeSection === "items" ? (
           <section className="settings-section" aria-label="Items">
-            <label className="settings-field">
-              <span>Mochila</span>
-              <textarea
-                value={joinLines(draftStatus.inventory)}
-                onChange={(event) => {
-                  setApplyStatus("dirty");
-                  setDraftStatus({
-                    ...draftStatus,
-                    inventory: splitLines(event.target.value)
-                  });
-                }}
-                rows={12}
-              />
-            </label>
+            <div className="settings-panel-card settings-inventory-compose">
+              <h3 className="settings-panel-card-title">Adicionar item</h3>
+              <p className="settings-panel-card-hint">
+                Pressiona Enter para adicionar rapidamente a mochila.
+              </p>
+              <div className="settings-add-row">
+                <label className="settings-field">
+                  <span>Novo item</span>
+                  <input
+                    onChange={(event) => setNewInventoryItem(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        addInventoryItem();
+                      }
+                    }}
+                    placeholder="Ex.: lanterna, chave enferrujada..."
+                    value={newInventoryItem}
+                  />
+                </label>
+                <button
+                  aria-label="Adicionar item a mochila"
+                  className="settings-icon-button settings-add-icon-button"
+                  onClick={addInventoryItem}
+                  type="button"
+                >
+                  <Plus size={17} strokeWidth={1.8} aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+
+            <div className="settings-panel-card settings-inventory-list-card">
+              <div className="settings-panel-card-head">
+                <h3 className="settings-panel-card-title">Mochila</h3>
+                <span className="settings-panel-card-meta">
+                  {draftStatus.inventory.length}{" "}
+                  {draftStatus.inventory.length === 1 ? "item" : "itens"}
+                </span>
+              </div>
+              {draftStatus.inventory.length > 0 ? (
+                <ul
+                  className="settings-inventory-list"
+                  aria-label="Itens na mochila"
+                >
+                  {draftStatus.inventory.map((item, index) => (
+                    <li className="settings-inventory-item" key={`${item}-${index}`}>
+                      <span className="settings-inventory-index">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <input
+                        aria-label={`Editar item ${index + 1}`}
+                        onBlur={commitInventoryDraft}
+                        onChange={(event) =>
+                          updateInventoryDraft(index, event.target.value)
+                        }
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.currentTarget.blur();
+                          }
+                        }}
+                        value={item}
+                      />
+                      <button
+                        aria-label={`Remover item ${item}`}
+                        className="settings-icon-button"
+                        onClick={() => removeInventoryItem(index)}
+                        type="button"
+                      >
+                        <Trash2 size={16} strokeWidth={1.8} aria-hidden="true" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="settings-empty-note">Mochila vazia.</p>
+              )}
+            </div>
           </section>
         ) : null}
 
         {activeSection === "location" ? (
           <section className="settings-section" aria-label="Localizacao">
-            <label className="settings-field">
-              <span>Localizacao</span>
-              <input
-                value={draftStatus.location}
-                onChange={(event) => {
-                  setApplyStatus("dirty");
-                  setDraftStatus({
-                    ...draftStatus,
-                    location: event.target.value
-                  });
-                }}
-              />
-            </label>
+            <div className="settings-panel-card settings-location-card">
+              <p className="settings-panel-card-hint">
+                Local atual visivel no HUD e enviado como contexto ao narrador.
+              </p>
+              <label className="settings-field">
+                <span>Localizacao</span>
+                <input
+                  onChange={(event) => {
+                    setApplyStatus("dirty");
+                    setDraftStatus({
+                      ...draftStatus,
+                      location: event.target.value
+                    });
+                  }}
+                  placeholder="Ex.: corredor do porao, sala de estar..."
+                  value={draftStatus.location}
+                />
+              </label>
+            </div>
           </section>
         ) : null}
 
-        {activeSection === "memories" ? (
-          <section className="settings-section" aria-label="Memorias adicionais">
-            <label className="settings-field">
-              <span>Memorias adicionais</span>
-              <textarea
-                value={draftSettings.additionalMemories}
-                onChange={(event) => updateAdditionalMemories(event.target.value)}
-                rows={14}
-              />
-            </label>
-          </section>
+        {activeSection === "skills" ? (
+          <SkillsWorkbench
+            draftSkills={draftSkills}
+            onDraftChange={updateDraftSkills}
+            theme={draftSettings.appearance.theme}
+          />
         ) : null}
 
         {activeSection === "models" ? (
           <section className="settings-section" aria-label="AI Models">
-            <div className="llm-config-grid">
-              <label className="settings-field">
-                <span>Temperature</span>
-                <input
-                  max={2}
-                  min={0}
-                  onChange={(event) =>
-                    updateLlm("temperature", Number(event.target.value))
-                  }
-                  step={0.05}
-                  type="number"
-                  value={draftSettings.llm.temperature}
-                />
-              </label>
-              <label className="settings-field">
-                <span>Max completion tokens</span>
-                <input
-                  max={4096}
-                  min={128}
-                  onChange={(event) =>
-                    updateLlm("maxCompletionTokens", Number(event.target.value))
-                  }
-                  step={128}
-                  type="number"
-                  value={draftSettings.llm.maxCompletionTokens}
-                />
-              </label>
-              <label className="settings-field">
-                <span>Context window</span>
-                <input
-                  max={1000000}
-                  min={4096}
-                  onChange={(event) =>
-                    updateLlm("contextWindowTokens", Number(event.target.value))
-                  }
-                  step={1024}
-                  type="number"
-                  value={draftSettings.llm.contextWindowTokens}
-                />
-              </label>
+            <div className="settings-panel-card settings-model-config">
+              <h3 className="settings-panel-card-title">Parametros de geracao</h3>
+              <p className="settings-panel-card-hint">
+                Ajusta o comportamento do modelo no proximo turno.
+              </p>
+              <div className="llm-config-grid settings-llm-grid">
+                {(Object.keys(llmParamHints) as Array<keyof AdventureSettings["llm"]>).map(
+                  (key) => (
+                    <label className="settings-field settings-llm-field" key={key}>
+                      <span>
+                        {key === "temperature"
+                          ? "Temperature"
+                          : key === "maxCompletionTokens"
+                            ? "Max completion tokens"
+                            : "Context window"}
+                      </span>
+                      <input
+                        max={
+                          key === "temperature"
+                            ? 2
+                            : key === "maxCompletionTokens"
+                              ? 4096
+                              : 1000000
+                        }
+                        min={
+                          key === "temperature"
+                            ? 0
+                            : key === "maxCompletionTokens"
+                              ? 128
+                              : 4096
+                        }
+                        onChange={(event) =>
+                          updateLlm(key, Number(event.target.value))
+                        }
+                        step={
+                          key === "temperature"
+                            ? 0.05
+                            : key === "maxCompletionTokens"
+                              ? 128
+                              : 1024
+                        }
+                        type="number"
+                        value={draftSettings.llm[key]}
+                      />
+                      <span className="settings-field-hint">{llmParamHints[key]}</span>
+                    </label>
+                  )
+                )}
+              </div>
+            </div>
+
+            <div className="settings-model-list-head">
+              <h3>Modelo OpenRouter</h3>
+              <span>Escolhe o modelo usado no proximo turno.</span>
             </div>
             <div className="model-option-list">
               {OPENROUTER_MODELS.map((model) => (
@@ -533,7 +704,7 @@ export function AdventureSettingsPanel({
                       {"isFree" in model && model.isFree ? <em>Free</em> : null}
                     </span>
                     <span className="model-option-meta">
-                      {model.provider} -{" "}
+                      {model.provider} ·{" "}
                       {model.contextWindowTokens.toLocaleString("pt-PT")} tokens
                     </span>
                     <span className="model-option-description">
@@ -549,34 +720,85 @@ export function AdventureSettingsPanel({
 
         {activeSection === "appearance" ? (
           <section className="settings-section" aria-label="Appearance">
-            <label className="settings-field">
-              <span>Tema</span>
-              <select
-                value={draftSettings.appearance.theme}
-                onChange={handleThemeChange}
+            <div className="settings-panel-card">
+              <h3 className="settings-panel-card-title">Tema</h3>
+              <p className="settings-panel-card-hint">
+                Escolhe o contraste base da interface.
+              </p>
+              <div
+                className="settings-theme-picker"
+                role="radiogroup"
+                aria-label="Tema da interface"
               >
-                <option value="dark">Escuro</option>
-                <option value="light">Claro</option>
-              </select>
-            </label>
-            <EreaderToneSlider
-              onChange={(value) => {
-                updateAppearance({
-                  ...draftSettings.appearance,
-                  ereaderTone: value
-                });
-              }}
-              value={draftSettings.appearance.ereaderTone}
-            />
-            <FontSizeSlider
-              onChange={(value) => {
-                updateAppearance({
-                  ...draftSettings.appearance,
-                  fontScale: value
-                });
-              }}
-              value={draftSettings.appearance.fontScale}
-            />
+                <label
+                  className={[
+                    "settings-theme-option",
+                    draftSettings.appearance.theme === "dark" ? "is-selected" : ""
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  <input
+                    checked={draftSettings.appearance.theme === "dark"}
+                    name="appearance-theme"
+                    onChange={handleThemeChange}
+                    type="radio"
+                    value="dark"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="settings-theme-swatch settings-theme-swatch--dark"
+                  />
+                  <span className="settings-theme-option-label">Escuro</span>
+                </label>
+                <label
+                  className={[
+                    "settings-theme-option",
+                    draftSettings.appearance.theme === "light" ? "is-selected" : ""
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  <input
+                    checked={draftSettings.appearance.theme === "light"}
+                    name="appearance-theme"
+                    onChange={handleThemeChange}
+                    type="radio"
+                    value="light"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="settings-theme-swatch settings-theme-swatch--light"
+                  />
+                  <span className="settings-theme-option-label">Claro</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="settings-panel-card settings-appearance-sliders">
+              <h3 className="settings-panel-card-title">Leitura e conforto</h3>
+              <p className="settings-panel-card-hint">
+                Ajusta luminosidade e tamanho do texto na area de jogo.
+              </p>
+              <EreaderToneSlider
+                onChange={(value) => {
+                  updateAppearance({
+                    ...draftSettings.appearance,
+                    ereaderTone: value
+                  });
+                }}
+                value={draftSettings.appearance.ereaderTone}
+              />
+              <FontSizeSlider
+                onChange={(value) => {
+                  updateAppearance({
+                    ...draftSettings.appearance,
+                    fontScale: value
+                  });
+                }}
+                value={draftSettings.appearance.fontScale}
+              />
+            </div>
           </section>
         ) : null}
       </div>

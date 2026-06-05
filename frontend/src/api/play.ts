@@ -1,9 +1,10 @@
 import { emptyNarrationFallback } from "../content/story";
 import { uiText } from "../content/uiText";
-import { formatMemoryForApi } from "../game/adventureMemory";
+import { formatFoldersForApi, formatSkillsForApi } from "../game/adventureSkills";
 import type {
-  AdventureMemory,
   AdventureSettings,
+  AdventureSkill,
+  AdventureSkills,
   GameAttributes,
   GameStatus,
   Turn
@@ -17,12 +18,14 @@ export type PlayUsage = {
 
 type PlayResponse = {
   reply?: string;
+  skillUpdates?: AdventureSkill[];
   usage?: PlayUsage;
   error?: string;
 };
 
 export type NarrationResult = {
   reply: string;
+  skillUpdates: AdventureSkill[];
   usage: PlayUsage | null;
 };
 
@@ -59,11 +62,11 @@ function resolveApiBase() {
 export async function requestNarration(
   message: string,
   history: Turn[],
-  memory: AdventureMemory,
+  skills: AdventureSkills,
   attributes: GameAttributes,
   status: GameStatus,
   adventureSettings: AdventureSettings
-) {
+): Promise<NarrationResult> {
   const apiBase = resolveApiBase();
   let response: Response;
 
@@ -75,7 +78,8 @@ export async function requestNarration(
         message,
         model: adventureSettings.selectedModel,
         adventureSettings,
-        memory: formatMemoryForApi(memory),
+        skills: formatSkillsForApi(skills),
+        folders: formatFoldersForApi(skills),
         attributes,
         status,
         history: history.slice(-12).map((turn) => ({
@@ -96,9 +100,11 @@ export async function requestNarration(
 
   const reply = data.reply?.trim() || emptyNarrationFallback;
   const usage = data.usage;
+  const skillUpdates = Array.isArray(data.skillUpdates) ? data.skillUpdates : [];
 
   return {
     reply,
+    skillUpdates,
     usage:
       usage &&
       typeof usage.promptTokens === "number" &&

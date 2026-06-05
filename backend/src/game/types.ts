@@ -1,8 +1,10 @@
 export type {
+  AdventureSkill,
+  AdventureSkills,
   GameAttributes,
   GameStatus,
-  MemorySource,
-  MemoryVariable
+  SkillFolder,
+  SkillSource
 } from "../../../shared/types.ts";
 
 export type { AdventureSettings } from "../../../shared/adventureSettings.ts";

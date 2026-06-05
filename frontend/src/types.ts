@@ -6,18 +6,22 @@ import type {
 } from "../../shared/adventureSettings";
 
 import type {
+  AdventureSkill,
+  AdventureSkills,
   GameAttributes,
   GameStatus,
-  MemorySource,
-  MemoryVariable
+  SkillFolder,
+  SkillSource
 } from "../../shared/types";
 
 export type {
   AdventureSettings,
+  AdventureSkill,
+  AdventureSkills,
   GameAttributes,
   GameStatus,
-  MemorySource,
-  MemoryVariable,
+  SkillFolder,
+  SkillSource,
   OpenRouterModelOption
 };
 
@@ -35,6 +39,16 @@ export type SidebarAction = {
   isActive?: boolean;
   isPressed?: boolean;
   onClick: () => void;
+};
+
+// Legacy types kept for save migration from v5
+export type MemorySource = SkillSource;
+
+export type MemoryVariable = {
+  key: string;
+  value: string;
+  source: MemorySource;
+  description: string;
 };
 
 export type AdventureMemory = {
