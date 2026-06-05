@@ -21,6 +21,12 @@ Thumbs.db
 
 # Browser profiles
 .codex-chrome-profile/
+.edge*/
+
+# Cache
+.cache/
+__pycache__/
+*.cache
 
 # Dependencies lockfiles (if using specific package managers)
 package-lock.json

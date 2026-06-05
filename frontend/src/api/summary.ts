@@ -1,7 +1,7 @@
 import { uiText } from "../content/uiText";
 import { formatMemoryForApi } from "../game/adventureMemory";
 import type { CriticalAttribute } from "../game/attributes";
-import type { AdventureMemory, Turn } from "../types";
+import type { AdventureMemory, AdventureSettings, Turn } from "../types";
 
 type SummaryResponse = {
   summary?: string;
@@ -19,7 +19,7 @@ function resolveApiBase() {
     return "";
   }
 
-  return "http://localhost:3001";
+  return "http://localhost:3011";
 }
 
 export function buildLocalSummary(cause: CriticalAttribute) {
@@ -29,7 +29,8 @@ export function buildLocalSummary(cause: CriticalAttribute) {
 export async function requestStorySummary(
   history: Turn[],
   memory: AdventureMemory,
-  cause: CriticalAttribute
+  cause: CriticalAttribute,
+  adventureSettings: AdventureSettings
 ) {
   const apiBase = resolveApiBase();
   let response: Response;
@@ -40,6 +41,8 @@ export async function requestStorySummary(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         cause,
+        model: adventureSettings.selectedModel,
+        adventureSettings,
         memory: formatMemoryForApi(memory),
         history: history.slice(-12).map((turn) => ({
           role: turn.role,

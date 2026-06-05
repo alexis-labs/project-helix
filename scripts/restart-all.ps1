@@ -19,8 +19,8 @@ if (-not $psExe) {
 
 Write-Output "Using PowerShell: $psExe"
 
-# Kill processes listening on common dev ports
-$ports = @(3001,5173,5174,5175)
+# Kill processes listening on Blindfold dev ports
+$ports = @(3011,5174)
 foreach ($p in $ports) {
   try {
     $conns = Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue

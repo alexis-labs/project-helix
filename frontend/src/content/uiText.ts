@@ -96,7 +96,7 @@ export const uiText = {
   requestError: "O narrador ficou em silêncio.",
   connectionError: "A ligação falhou. Só ouves a tua respiração.",
   backendUnreachable:
-    "Não foi possível contactar o servidor do jogo. Inicia o backend com «npm run dev:backend» na raiz do projeto (porta 3001) e recarrega a página.",
+    "Não foi possível contactar o servidor do jogo. Inicia o backend com «npm run dev:backend» na raiz do projeto (porta 3011) e recarrega a página.",
   diaryTitle: "Diário",
   diaryToggleLabel: "Ver diário",
   diaryAriaLabel: "Diário da aventura",

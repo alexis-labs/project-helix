@@ -3,21 +3,32 @@ import express from "express";
 import OpenAI from "openai";
 
 import {
+  OPENROUTER_MODELS,
+  resolveOpenRouterModel
+} from "../../shared/adventureSettings.ts";
+import {
   buildCompletionParams,
   buildSummaryPrompt,
   llmConfig
 } from "./game/llmConfig.ts";
 import { normalizeAttributes, normalizeStatus } from "./game/gameState.ts";
 import { formatMemoryForPrompt, normalizeMemory } from "./game/memory.ts";
+import { normalizeAdventureSettings } from "./game/prompt/adventureSettings.ts";
 import {
   buildBaseSystemPrompt,
   buildSystemPrompt
 } from "./game/prompt/buildSystemPrompt.ts";
 import { estimateTextTokens } from "./game/tokens.ts";
-import type { ClientTurn, GameAttributes, GameStatus, MemoryVariable } from "./game/types.ts";
+import type {
+  AdventureSettings,
+  ClientTurn,
+  GameAttributes,
+  GameStatus,
+  MemoryVariable
+} from "./game/types.ts";
 
 const app = express();
-const port = Number(process.env.PORT || 3001);
+const port = Number(process.env.PORT || 3011);
 const openai = llmConfig.apiKey
   ? new OpenAI({
       apiKey: llmConfig.apiKey,
@@ -37,10 +48,11 @@ app.get("/api/health", (_request, response) => {
     ok: true,
     llm: {
       enabled: Boolean(openai),
-      model: llmConfig.model,
+      model: resolveOpenRouterModel(llmConfig.model),
       provider: llmConfig.provider,
       contextWindowTokens: llmConfig.contextWindowTokens,
-      estimatedSystemPromptTokens
+      estimatedSystemPromptTokens,
+      availableModels: OPENROUTER_MODELS
     }
   });
 });
@@ -51,6 +63,12 @@ app.post("/api/play", async (request, response) => {
   const memory = normalizeMemory(request.body?.memory);
   const attributes = normalizeAttributes(request.body?.attributes);
   const status = normalizeStatus(request.body?.status);
+  const adventureSettings = normalizeAdventureSettings(
+    request.body?.adventureSettings
+  );
+  const model = resolveOpenRouterModel(
+    normalizeText(request.body?.model) || llmConfig.model
+  );
 
   if (!message) {
     response.status(400).json({ error: "Mensagem vazia." });
@@ -68,7 +86,9 @@ app.post("/api/play", async (request, response) => {
       history,
       memory,
       attributes,
-      status
+      status,
+      adventureSettings,
+      model
     );
     response.json({ reply, usage });
   } catch (error) {
@@ -82,6 +102,12 @@ app.post("/api/summary", async (request, response) => {
   const history = normalizeHistory(request.body?.history);
   const memory = normalizeMemory(request.body?.memory);
   const cause = normalizeCause(request.body?.cause);
+  const adventureSettings = normalizeAdventureSettings(
+    request.body?.adventureSettings
+  );
+  const model = resolveOpenRouterModel(
+    normalizeText(request.body?.model) || llmConfig.model
+  );
 
   if (!cause) {
     response.status(400).json({ error: "Causa de fim de jogo inválida." });
@@ -94,7 +120,13 @@ app.post("/api/summary", async (request, response) => {
   }
 
   try {
-    const summary = await summarizeStoryWithOpenAI(history, memory, cause);
+    const summary = await summarizeStoryWithOpenAI(
+      history,
+      memory,
+      cause,
+      adventureSettings,
+      model
+    );
     response.json({ summary });
   } catch (error) {
     const details = formatNarrationError(error);
@@ -108,7 +140,9 @@ async function narrateWithOpenAI(
   history: ClientTurn[],
   memory: MemoryVariable[],
   attributes?: GameAttributes,
-  status?: GameStatus
+  status?: GameStatus,
+  adventureSettings?: AdventureSettings,
+  model = resolveOpenRouterModel(llmConfig.model)
 ) {
   if (!openai) {
     return {
@@ -121,7 +155,14 @@ async function narrateWithOpenAI(
     };
   }
 
-  const systemContent = buildSystemPrompt({ memory, attributes, status });
+  const systemContent = buildSystemPrompt({
+    memory,
+    attributes,
+    status,
+    adventureSettings,
+    message,
+    history
+  });
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     { role: "system", content: systemContent },
     ...history.slice(-10).map((turn) => ({
@@ -134,7 +175,8 @@ async function narrateWithOpenAI(
     { role: "user", content: message }
   ];
 
-  const completion = await createCompletionWithRetry(messages);
+  const completion = await createCompletionWithRetry(messages, model);
+  const modelContextLimit = getModelContextWindow(model);
 
   return {
     reply:
@@ -143,13 +185,14 @@ async function narrateWithOpenAI(
     usage: {
       promptTokens: completion.usage?.prompt_tokens ?? 0,
       totalTokens: completion.usage?.total_tokens ?? 0,
-      contextLimit: llmConfig.contextWindowTokens
+      contextLimit: modelContextLimit
     }
   };
 }
 
 async function createCompletionWithRetry(
-  messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]
+  messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+  model: string
 ) {
   const maxAttempts = 4;
   let lastError: unknown;
@@ -157,7 +200,7 @@ async function createCompletionWithRetry(
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
       return await openai!.chat.completions.create({
-        model: llmConfig.model,
+        model,
         messages,
         ...buildCompletionParams()
       });
@@ -170,7 +213,7 @@ async function createCompletionWithRetry(
 
       const delayMs = 1000 * 2 ** (attempt - 1);
       console.warn(
-        `LLM transient error (${llmConfig.model}, attempt ${attempt}/${maxAttempts}). Retrying in ${delayMs}ms...`
+        `LLM transient error (${model}, attempt ${attempt}/${maxAttempts}). Retrying in ${delayMs}ms...`
       );
       await sleep(delayMs);
     }
@@ -182,7 +225,9 @@ async function createCompletionWithRetry(
 async function summarizeStoryWithOpenAI(
   history: ClientTurn[],
   memory: MemoryVariable[],
-  cause: GameOverCause
+  cause: GameOverCause,
+  adventureSettings: AdventureSettings,
+  model: string
 ) {
   if (!openai) {
     return buildFallbackSummary(cause);
@@ -201,7 +246,7 @@ async function summarizeStoryWithOpenAI(
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     {
       role: "system",
-      content: `${buildSummaryPrompt(cause)}${memoryContext}`
+      content: `${buildSummaryPrompt(cause)}${memoryContext}\n\nResumo editável da aventura:\n${adventureSettings.plot.storySummary}`
     },
     {
       role: "user",
@@ -209,7 +254,7 @@ async function summarizeStoryWithOpenAI(
     }
   ];
 
-  const completion = await createCompletionWithRetry(messages);
+  const completion = await createCompletionWithRetry(messages, model);
 
   return (
     completion.choices[0]?.message?.content?.trim() ||
@@ -241,6 +286,13 @@ function stripUiStateBlock(text: string) {
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getModelContextWindow(model: string) {
+  return (
+    OPENROUTER_MODELS.find((option) => option.id === model)?.contextWindowTokens ||
+    llmConfig.contextWindowTokens
+  );
 }
 
 function formatNarrationError(error: unknown) {

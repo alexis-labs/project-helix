@@ -15,28 +15,16 @@ const readEnv = (name: string) => {
   return value || undefined;
 };
 
-const provider = readEnv("LLM_PROVIDER") || "openrouter";
-const defaultModel =
-  provider === "openai"
-    ? "gpt-4.1-mini"
-    : provider === "google"
-      ? "gemini-2.5-flash"
-      : "openrouter/free";
-const providerKeyName = `${provider.toUpperCase()}_API_KEY`;
+const provider = "openrouter";
+const defaultModel = "nvidia/nemotron-3.5-content-safety:free";
 
 export const llmConfig = {
   provider,
   apiKey:
     readEnv("LLM_API_KEY") ||
-    readEnv(providerKeyName) ||
+    readEnv("OPENROUTER_API_KEY") ||
     readEnv("OPENAI_API_KEY"),
-  baseUrl:
-    readEnv("OPENAI_BASE_URL") ||
-    (provider === "openrouter"
-      ? "https://openrouter.ai/api/v1"
-      : provider === "google"
-        ? "https://generativelanguage.googleapis.com/v1beta/openai/"
-        : undefined),
+  baseUrl: readEnv("OPENAI_BASE_URL") || "https://openrouter.ai/api/v1",
   model: readEnv("OPENAI_MODEL") || defaultModel,
   temperature: 0.85,
   maxCompletionTokens: Number(readEnv("LLM_MAX_COMPLETION_TOKENS") || 1024),
@@ -44,15 +32,10 @@ export const llmConfig = {
 };
 
 export function buildCompletionParams() {
-  const shared = {
-    temperature: llmConfig.temperature
+  return {
+    temperature: llmConfig.temperature,
+    max_completion_tokens: llmConfig.maxCompletionTokens
   };
-
-  if (llmConfig.provider === "google") {
-    return { ...shared, max_tokens: llmConfig.maxCompletionTokens };
-  }
-
-  return { ...shared, max_completion_tokens: llmConfig.maxCompletionTokens };
 }
 
 export { buildSummaryPrompt } from "./prompt/summary.ts";

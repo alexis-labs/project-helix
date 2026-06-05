@@ -22,7 +22,7 @@ function resolveApiBase() {
     return "";
   }
 
-  return "http://localhost:3001";
+  return "http://localhost:3011";
 }
 
 export async function fetchContextLimits(): Promise<ContextLimits> {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { BookOpen, Moon, Sun, Type, Volume2 } from "lucide-react";
+import { BookOpen, Moon, Sun, Volume2 } from "lucide-react";
 import { fetchContextLimits } from "../api/health";
 import { requestNarration } from "../api/play";
 import { requestStorySummary } from "../api/summary";
@@ -38,7 +38,14 @@ import {
 } from "../content/story";
 import { uiText } from "../content/uiText";
 import type { ActiveGameState } from "../game/initialState";
-import type { AdventureMemory, GameAttributes, GameStatus, SidebarAction, Turn } from "../types";
+import type {
+  AdventureMemory,
+  AdventureSettings,
+  GameAttributes,
+  GameStatus,
+  SidebarAction,
+  Turn
+} from "../types";
 import { CommandInput } from "./CommandInput";
 import { GameHeader } from "./GameHeader";
 import { GameOverPanel } from "./GameOverPanel";
@@ -198,11 +205,12 @@ export function App() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(true);
   const [storySearchQuery, setStorySearchQuery] = useState("");
   const [isDiaryOpen, setIsDiaryOpen] = useState(false);
-  const [isEreaderToneOpen, setIsEreaderToneOpen] = useState(false);
-  const [isFontScaleOpen, setIsFontScaleOpen] = useState(false);
   const [attributes, setAttributes] = useState(createNewGameState().attributes);
   const [status, setStatus] = useState(createNewGameState().status);
   const [memory, setMemory] = useState<AdventureMemory>(createNewGameState().memory);
+  const [adventureSettings, setAdventureSettings] = useState<AdventureSettings>(
+    createNewGameState().adventureSettings
+  );
   const [contextLimits, setContextLimits] = useState<ContextLimits>(
     getFallbackContextLimits
   );
@@ -224,8 +232,20 @@ export function App() {
       label: isLightTheme ? uiText.themeDarkLabel : uiText.themeLightLabel,
       icon: isLightTheme ? Moon : Sun,
       isPressed: isLightTheme,
-      onClick: () =>
-        setTheme((currentTheme) => (currentTheme === "light" ? "dark" : "light"))
+      onClick: () => {
+        const nextTheme: AdventureSettings["appearance"]["theme"] =
+          theme === "light" ? "dark" : "light";
+        const nextSettings = {
+          ...adventureSettings,
+          appearance: {
+            ...adventureSettings.appearance,
+            theme: nextTheme
+          }
+        };
+
+        setTheme(nextTheme);
+        updateAdventureSettings(nextSettings);
+      }
     },
     {
       id: "diary",
@@ -234,38 +254,6 @@ export function App() {
       isActive: isDiaryOpen,
       isPressed: isDiaryOpen,
       onClick: () => setIsDiaryOpen((current) => !current)
-    },
-    {
-      id: "ereader-tone",
-      label: uiText.ereadToneToggleLabel,
-      icon: Sun,
-      isPressed: isEreaderToneOpen,
-      onClick: () =>
-        setIsEreaderToneOpen((current) => {
-          const next = !current;
-
-          if (next) {
-            setIsHistoryOpen(true);
-          }
-
-          return next;
-        })
-    },
-    {
-      id: "font-scale",
-      label: uiText.fontScaleToggleLabel,
-      icon: Type,
-      isPressed: isFontScaleOpen,
-      onClick: () =>
-        setIsFontScaleOpen((current) => {
-          const next = !current;
-
-          if (next) {
-            setIsHistoryOpen(true);
-          }
-
-          return next;
-        })
     },
     {
       id: "audio",
@@ -351,6 +339,10 @@ export function App() {
     setAttributes(state.attributes);
     setStatus(state.status);
     setMemory(state.memory);
+    setAdventureSettings(state.adventureSettings);
+    setTheme(state.adventureSettings.appearance.theme);
+    setEreadTone(state.adventureSettings.appearance.ereaderTone);
+    setFontScale(state.adventureSettings.appearance.fontScale);
     setMessage("");
     setError("");
     setIsLoading(false);
@@ -358,16 +350,46 @@ export function App() {
     setIsDiaryOpen(false);
   }
 
+  function updateAdventureSettings(nextSettings: AdventureSettings) {
+    setAdventureSettings(nextSettings);
+
+    if (screen !== "playing") {
+      return;
+    }
+
+    persistProgress({
+      currentReply,
+      currentAction,
+      history,
+      attributes,
+      status,
+      memory,
+      adventureSettings: nextSettings
+    });
+  }
+
+  function updateAppearance(appearance: AdventureSettings["appearance"]) {
+    setTheme(appearance.theme);
+    setEreadTone(appearance.ereaderTone);
+    setFontScale(appearance.fontScale);
+  }
+
   async function triggerGameOver(
     cause: CriticalAttribute,
     completedHistory: Turn[],
-    nextMemory: AdventureMemory
+    nextMemory: AdventureMemory,
+    settings: AdventureSettings
   ) {
     setGameOver({ cause, summary: "", isSummaryLoading: true });
     clearSavedGame();
     setCanContinue(false);
 
-    const summary = await requestStorySummary(completedHistory, nextMemory, cause);
+    const summary = await requestStorySummary(
+      completedHistory,
+      nextMemory,
+      cause,
+      settings
+    );
     setGameOver({ cause, summary, isSummaryLoading: false });
   }
 
@@ -403,7 +425,12 @@ export function App() {
       const cause = getCriticalAttribute(clampedAttributes);
 
       if (cause) {
-        void triggerGameOver(cause, saved.history, saved.memory);
+        void triggerGameOver(
+          cause,
+          saved.history,
+          saved.memory,
+          saved.adventureSettings
+        );
       }
     }
   }
@@ -433,7 +460,8 @@ export function App() {
       history: nextHistory,
       attributes,
       status,
-      memory: nextMemory
+      memory: nextMemory,
+      adventureSettings
     });
     setCanContinue(true);
 
@@ -443,7 +471,8 @@ export function App() {
         history,
         nextMemory,
         attributes,
-        status
+        status,
+        adventureSettings
       );
       const visibleReply = stripUiStateBlock(reply) || reply;
       const extractedAttributes = extractAttributes(reply);
@@ -502,14 +531,20 @@ export function App() {
         history: completedHistory,
         attributes: nextAttributes,
         status: nextStatus,
-        memory: nextMemoryFromReply
+        memory: nextMemoryFromReply,
+        adventureSettings
       });
 
       if (hasAttributeAtMax(nextAttributes)) {
         const cause = getCriticalAttribute(nextAttributes);
 
         if (cause) {
-          await triggerGameOver(cause, completedHistory, nextMemoryFromReply);
+          await triggerGameOver(
+            cause,
+            completedHistory,
+            nextMemoryFromReply,
+            adventureSettings
+          );
         }
 
         return;
@@ -529,7 +564,8 @@ export function App() {
         history: nextHistory,
         attributes,
         status,
-        memory: nextMemory
+        memory: nextMemory,
+        adventureSettings
       });
     } finally {
       setIsLoading(false);
@@ -631,12 +667,11 @@ export function App() {
         attributes={attributes}
         ereaderTone={ereadTone}
         fontScale={fontScale}
-        isEreaderToneOpen={isEreaderToneOpen}
-        isFontScaleOpen={isFontScaleOpen}
         isOpen={isHistoryOpen}
-        onEreaderToneChange={setEreadTone}
-        onFontScaleChange={setFontScale}
+        adventureSettings={adventureSettings}
         onToggle={() => setIsHistoryOpen((current) => !current)}
+        onAdventureSettingsChange={updateAdventureSettings}
+        onAppearanceChange={updateAppearance}
         status={status}
       />
     </main>

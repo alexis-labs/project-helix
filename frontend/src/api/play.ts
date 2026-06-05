@@ -1,7 +1,13 @@
 import { emptyNarrationFallback } from "../content/story";
 import { uiText } from "../content/uiText";
 import { formatMemoryForApi } from "../game/adventureMemory";
-import type { AdventureMemory, GameAttributes, GameStatus, Turn } from "../types";
+import type {
+  AdventureMemory,
+  AdventureSettings,
+  GameAttributes,
+  GameStatus,
+  Turn
+} from "../types";
 
 export type PlayUsage = {
   promptTokens: number;
@@ -47,7 +53,7 @@ function resolveApiBase() {
     return "";
   }
 
-  return "http://localhost:3001";
+  return "http://localhost:3011";
 }
 
 export async function requestNarration(
@@ -55,7 +61,8 @@ export async function requestNarration(
   history: Turn[],
   memory: AdventureMemory,
   attributes: GameAttributes,
-  status: GameStatus
+  status: GameStatus,
+  adventureSettings: AdventureSettings
 ) {
   const apiBase = resolveApiBase();
   let response: Response;
@@ -66,6 +73,8 @@ export async function requestNarration(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message,
+        model: adventureSettings.selectedModel,
+        adventureSettings,
         memory: formatMemoryForApi(memory),
         attributes,
         status,

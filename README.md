@@ -35,7 +35,7 @@ npm run dev:frontend
 Depois abre o URL indicado pelo Vite, normalmente:
 
 ```txt
-http://localhost:5173
+http://localhost:5174
 ```
 
 Se a porta estiver ocupada, o Vite escolhe outra e mostra no terminal.
@@ -73,40 +73,23 @@ cp .env.example .env
 Edita `.env`:
 
 ```txt
-LLM_PROVIDER=openrouter
 OPENAI_BASE_URL=https://openrouter.ai/api/v1
-OPENAI_MODEL=openrouter/free
+OPENAI_MODEL=mistralai/mistral-nemo
 OPENROUTER_API_KEY=
-PORT=3001
+PORT=3011
 ```
 
-Cria uma chave em `https://openrouter.ai/keys` para testar com modelos gratuitos.
+Cria uma chave em `https://openrouter.ai/keys` para testar via OpenRouter.
 Deixa `OPENAI_API_KEY` vazio para usar o fallback local durante desenvolvimento.
 
-Tambem podes usar outro provider compativel com a API da OpenAI:
-
-```txt
-LLM_PROVIDER=openai
-OPENAI_BASE_URL=
-OPENAI_MODEL=gpt-4.1-mini
-OPENAI_API_KEY=
-```
-
-```txt
-LLM_PROVIDER=groq
-OPENAI_BASE_URL=https://api.groq.com/openai/v1
-OPENAI_MODEL=llama-3.3-70b-versatile
-GROQ_API_KEY=
-```
-
-Frontend, apenas se o backend nao estiver em `http://localhost:3001`:
+Frontend, apenas se o backend nao estiver em `http://localhost:3011`:
 
 ```bash
 cp frontend/.env.example frontend/.env
 ```
 
 ```txt
-VITE_API_URL=http://localhost:3001
+VITE_API_URL=http://localhost:3011
 ```
 
 ## Scripts
@@ -161,7 +144,7 @@ Ver [INDEX.md](INDEX.md) para o índice completo.
 
 ## Onde editar
 
-- Configuracao LLM (modelo, tokens, provider): `backend/src/game/llmConfig.ts`
+- Configuracao LLM (modelo e tokens via OpenRouter): `backend/src/game/llmConfig.ts`
 - Prompt narrativo, regras, NPCs e formato de resposta: `backend/src/game/prompt/`
 - Conteudo inicial do jogo (atributos, inventario, memoria, objectivos): `shared/gameContent.ts`
 - Texto inicial e mensagens de estado: `frontend/src/content/story.ts`

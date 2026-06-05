@@ -1,7 +1,10 @@
 import { formatMemoryForPrompt } from "../memory.ts";
+import type { ClientTurn } from "../types.ts";
 import type { MemoryVariable } from "../types.ts";
+import type { AdventureSettings } from "../../../../shared/adventureSettings.ts";
 import type { GameAttributes, GameStatus } from "../../../../shared/types.ts";
 import { attributeSystem } from "./attributeSystem.ts";
+import { formatAdventureSettingsForPrompt } from "./adventureSettings.ts";
 import {
   formatCharacterSection,
   formatInitialStateSection
@@ -20,6 +23,9 @@ export type BuildSystemPromptInput = {
   memory: MemoryVariable[];
   attributes?: GameAttributes;
   status?: GameStatus;
+  adventureSettings?: AdventureSettings;
+  message?: string;
+  history?: ClientTurn[];
 };
 
 export function buildSystemPrompt(input: BuildSystemPromptInput) {
@@ -32,6 +38,13 @@ export function buildSystemPrompt(input: BuildSystemPromptInput) {
     formatItemsSection(),
     npcs,
     storyBeats,
+    input.adventureSettings
+      ? formatAdventureSettingsForPrompt(
+          input.adventureSettings,
+          input.message ?? "",
+          input.history ?? []
+        )
+      : "",
     responseFormat,
     formatMemoryForPrompt(input.memory),
     formatRuntimeStateForPrompt(input.attributes, input.status)

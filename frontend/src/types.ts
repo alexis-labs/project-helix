@@ -1,13 +1,27 @@
 import type { LucideIcon } from "lucide-react";
 
 import type {
+  AdventureSettings,
+  OpenRouterModelOption,
+  StoryCard
+} from "../../shared/adventureSettings";
+
+import type {
   GameAttributes,
   GameStatus,
   MemorySource,
   MemoryVariable
 } from "../../shared/types";
 
-export type { GameAttributes, GameStatus, MemorySource, MemoryVariable };
+export type {
+  AdventureSettings,
+  GameAttributes,
+  GameStatus,
+  MemorySource,
+  MemoryVariable,
+  OpenRouterModelOption,
+  StoryCard
+};
 
 export type Turn = {
   role: "player" | "narrator";
