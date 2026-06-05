@@ -31,11 +31,13 @@ export const llmConfig = {
   contextWindowTokens: Number(readEnv("LLM_CONTEXT_WINDOW") || 128_000)
 };
 
-export function buildCompletionParams() {
+export function buildCompletionParams(overrides?: {
+  temperature?: number;
+  maxCompletionTokens?: number;
+}) {
   return {
-    temperature: llmConfig.temperature,
-    max_completion_tokens: llmConfig.maxCompletionTokens
+    temperature: overrides?.temperature ?? llmConfig.temperature,
+    max_completion_tokens:
+      overrides?.maxCompletionTokens ?? llmConfig.maxCompletionTokens
   };
 }
-
-export { buildSummaryPrompt } from "./prompt/summary.ts";

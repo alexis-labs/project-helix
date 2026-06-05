@@ -1,10 +1,7 @@
-export const openingNarration =
-  "Ninguém sabe onde começou.\n\nNão houve explosões. Não houve sirenes. Não houve uma guerra nuclear nem um aviso vindo dos céus.\n\nApenas olhares.\n\nNo primeiro dia, os relatos pareciam absurdos. Pessoas que encaravam familiares por breves segundos… e mudavam. Ficavam vazias. Perdidas. Como se algo lhes arrancasse a alma sem deixar uma única gota de sangue para trás.\n\nNo segundo dia, cidades inteiras mergulharam no caos.\n\nBastava contacto visual.\n\nUm olhar direto para um infetado era suficiente para destruir tudo o que fazia alguém humano. Memórias desapareciam em segundos. Nomes. Rostos. Vozes. Linguagem. História. Restava apenas um corpo vivo, guiado por impulsos primitivos: fome, sobrevivência… e uma necessidade inexplicável de espalhar a infeção.\n\nOs contaminados vagueavam pelas estradas, pelos bosques e pelas ruínas das cidades como sombras sem identidade. Não corriam. Não gritavam. Apenas procuravam o próximo olhar. Como se cada nova infeção lhes trouxesse uma estranha sensação de propósito.\n\nO mundo caiu em menos de uma semana.\n\nMais de oitenta por cento da população foi perdida antes mesmo de compreender o que estava a acontecer.\n\nQuando finalmente perceberam a origem do contágio… já era tarde demais.\n\nOs cegos eram imunes.\n\nHomens e mulheres começaram a sobreviver vendados. Outros arrancaram os próprios olhos para continuarem vivos. Ruas ficaram cheias de pessoas guiadas por cordas, sons e memória tátil. O silêncio tornou-se mais valioso do que luz.\n\nMas nem todos conseguiram abandonar aqueles que amavam.\n\nMuitos prenderam familiares infetados em caves, quartos ou abrigos improvisados. Maridos acorrentaram esposas. Pais alimentaram filhos que já não os reconheciam. Alguns ainda acreditavam que existia cura. Outros simplesmente não conseguiam aceitar que a pessoa do outro lado da porta já tinha desaparecido.\n\nAgora, o mundo pertence aos cegos.\n\nE aos que ainda conseguem fingir que não têm medo de abrir os olhos.";
-export const loadingNarration =
-  "...";
+export const openingNarration = "";
 
-export const emptyNarrationFallback =
-  "Nada acontece. Tenta outra coisa.";
+export const loadingNarration = "...";
 
-export const connectionFailureNarration =
-  "Sem resposta. Tenta de novo.";
+export const emptyNarrationFallback = "";
+
+export const connectionFailureNarration = "Sem resposta. Tenta de novo.";

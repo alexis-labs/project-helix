@@ -2,42 +2,42 @@ import { FONT_SCALE_DEFAULT } from "../hooks/useFontScale";
 
 export const uiText = {
   title: "Blindfold",
-  subtitle: "Uma venda. Nenhuma saída visível.",
+  subtitle: "Sandbox narrativa editavel.",
   menuAriaLabel: "Menu principal",
-  menuActionsAriaLabel: "Opções do jogo",
+  menuActionsAriaLabel: "Opcoes do jogo",
   menuNewGame: "Novo jogo",
   menuContinue: "Continuar",
   menuExit: "Sair",
-  menuContinueDisabledHint: "Ainda não existe uma história guardada.",
+  menuContinueDisabledHint: "Ainda nao existe uma sessao guardada.",
   menuExitHint: "Podes fechar este separador do browser para sair.",
-  menuNewGameConfirmTitle: "Apagar gravação?",
+  menuNewGameConfirmTitle: "Apagar gravacao?",
   menuNewGameConfirmMessage:
-    "Iniciar um novo jogo vai substituir a história guardada. Esta ação não pode ser desfeita. Queres mesmo continuar?",
-  menuNewGameConfirmYes: "Sim, começar de novo",
+    "Iniciar um novo jogo vai substituir a sessao guardada. Esta acao nao pode ser desfeita. Queres mesmo continuar?",
+  menuNewGameConfirmYes: "Sim, comecar de novo",
   menuNewGameConfirmNo: "Cancelar",
   menuNewGameConfirmAriaLabel: "Confirmar novo jogo",
   narratorLabel: "Narrador",
-  playerLabel: "Você",
-  currentActionLabel: "Ação",
+  playerLabel: "Voce",
+  currentActionLabel: "Acao",
   sidebarCollapseLabel: "Fechar painel",
   sidebarExpandLabel: "Abrir painel",
   sidebarActionsLabel: "Controlos",
   mainAriaLabel: "Blindfold",
-  diarySearchLabel: "Pesquisar na história",
-  diarySearchPlaceholder: "Palavras, ações, locais...",
-  diarySearchHint: "Pesquisa em todas as entradas da aventura.",
-  diarySearchResultsAriaLabel: "Resultados da pesquisa na história",
+  diarySearchLabel: "Pesquisar na sessao",
+  diarySearchPlaceholder: "Palavras, acoes, locais...",
+  diarySearchHint: "Pesquisa em todas as entradas da sessao.",
+  diarySearchResultsAriaLabel: "Resultados da pesquisa na sessao",
   diarySearchClear: "Limpar pesquisa",
   diaryEntryLabel: (index: number) => `Entrada ${String(index).padStart(2, "0")}`,
   diaryResultsLabel: (shown: number, total: number) =>
     shown === total
       ? `${total} ${total === 1 ? "entrada" : "entradas"}`
       : `${shown} de ${total} entradas`,
-  diaryNoResults: "Nenhuma entrada corresponde à pesquisa.",
+  diaryNoResults: "Nenhuma entrada corresponde a pesquisa.",
   diaryPlayerHeading: "A tua nota",
-  diaryNarratorHeading: "O que aconteceu",
-  inputAriaLabel: "A tua ação",
-  inputPlaceholder: "Escreve o teu caminho...",
+  diaryNarratorHeading: "Resposta",
+  inputAriaLabel: "A tua acao",
+  inputPlaceholder: "Escreve...",
   submitLabel: "Enviar",
   themeLightLabel: "Modo claro",
   themeDarkLabel: "Modo escuro",
@@ -45,12 +45,12 @@ export const uiText = {
   audioOffLabel: "Ambiente",
   ereadToneLabel: "Luminosidade",
   ereadToneToggleLabel: "Ajustar luminosidade",
-  ereadToneAriaLabel: "Ajustar luminosidade e tom do ecrã",
+  ereadToneAriaLabel: "Ajustar luminosidade e tom do ecra",
   ereadToneValueLabel: (value: number) =>
     value === 0
       ? "Luminosidade normal"
       : value >= 85
-        ? "Luminosidade quente no máximo"
+        ? "Luminosidade quente no maximo"
         : `${value} por cento de luminosidade quente`,
   ereadToneMinHint: "Normal",
   ereadToneMaxHint: "Quente",
@@ -63,13 +63,13 @@ export const uiText = {
       : value <= 90
         ? "Texto mais pequeno"
         : value >= 120
-          ? "Texto maior no máximo"
+          ? "Texto maior no maximo"
           : `${value} por cento do tamanho normal`,
   fontScaleMinHint: "Menor",
   fontScaleMaxHint: "Maior",
-  stateIndicatorsAriaLabel: "HUD de mapa, inventário e estado",
+  stateIndicatorsAriaLabel: "HUD de mapa, inventario e estado",
   vitalsIndicatorLabel: "Estado",
-  attributeChangesAriaLabel: "Alterações de estado",
+  attributeChangesAriaLabel: "Alteracoes de estado",
   attributeChangeLabel: (delta: number, name: string) => {
     const sign = delta > 0 ? "+" : "";
     return `${sign}${delta} de ${name}`;
@@ -78,63 +78,59 @@ export const uiText = {
     fear: "medo",
     injuries: "ferimentos",
     hunger: "fome",
-    exhaustion: "exaustão"
+    exhaustion: "exaustao"
   } as const,
-  vitalsStableLabel: "Estável",
+  vitalsStableLabel: "Estavel",
   vitalsStrainedLabel: "Tenso",
-  vitalsCriticalLabel: "Crítico",
+  vitalsCriticalLabel: "Critico",
   sidebarResizeLabel: "Redimensionar painel lateral",
-  mapIndicatorLabel: "Localização",
+  mapIndicatorLabel: "Localizacao",
   mapCurrentLocationLabel: "Zona atual",
   inventoryIndicatorLabel: "Mochila",
   inventoryEmptyLabel: "Sem itens",
   inventoryEmptySlotLabel: "Vazio",
   inventoryHiddenItemsLabel: (count: number) => `+${count}`,
   inventorySingleItemLabel: "1 item",
-  inventoryItemsAriaLabel: "Itens no inventário",
+  inventoryItemsAriaLabel: "Itens no inventario",
   inventoryItemsLabel: (count: number) => `${count} itens`,
-  requestError: "O narrador ficou em silêncio.",
-  connectionError: "A ligação falhou. Só ouves a tua respiração.",
+  requestError: "O modelo nao devolveu resposta.",
+  connectionError: "A ligacao falhou.",
   backendUnreachable:
-    "Não foi possível contactar o servidor do jogo. Inicia o backend com «npm run dev:backend» na raiz do projeto (porta 3011) e recarrega a página.",
-  diaryTitle: "Diário",
-  diaryToggleLabel: "Ver diário",
-  diaryAriaLabel: "Diário da aventura",
-  diaryEmpty: "Ainda não há notas no diário.",
+    "Nao foi possivel contactar o servidor do jogo. Inicia o backend com «npm run dev:backend» na raiz do projeto (porta 3011) e recarrega a pagina.",
+  diaryTitle: "Diario",
+  diaryToggleLabel: "Ver diario",
+  diaryAriaLabel: "Diario da sessao",
+  diaryEmpty: "Ainda nao ha notas no diario.",
   diaryTagPlayer: "Tu",
-  diaryTagExternal: "Mundo",
-  diaryTagDiscovery: "Pista",
+  diaryTagExternal: "Externo",
+  diaryTagDiscovery: "Descoberta",
   contextUsageAriaLabel: (percent: number, used: number, limit: number) =>
     `Contexto usado: ${percent} por cento, ${used} de ${limit} tokens`,
   contextUsageHint: (used: number, limit: number, percent: number) =>
     `${percent}% do contexto (${used.toLocaleString("pt-PT")} / ${limit.toLocaleString("pt-PT")} tokens)`,
-  gameOverEyebrow: "Fim da jornada",
-  gameOverTitle: "A história acaba aqui",
+  gameOverEyebrow: "Fim da sessao",
+  gameOverTitle: "A sessao acaba aqui",
   gameOverCause: (cause: "fear" | "injuries" | "hunger" | "exhaustion") => {
     const labels = {
-      fear: "Colapso psicológico — medo no máximo",
-      injuries: "Morte — ferimentos no máximo",
-      hunger: "Inanição — fome no máximo",
-      exhaustion: "Exaustão total — exaustão no máximo"
+      fear: "Medo no maximo",
+      injuries: "Ferimentos no maximo",
+      hunger: "Fome no maximo",
+      exhaustion: "Exaustao no maximo"
     };
 
     return labels[cause];
   },
-  gameOverSummaryLabel: "Resumo da história",
-  gameOverSummaryLoading: "A recolher os últimos fragmentos da tua história...",
+  gameOverSummaryLabel: "Resumo",
+  gameOverSummaryLoading: "A resumir a sessao...",
   gameOverReturnToMenu: "Voltar ao menu",
   gameOverFallbackSummary: (cause: "fear" | "injuries" | "hunger" | "exhaustion") => {
     const endings = {
-      fear:
-        "O medo consumiu-te por completo. Perdeste o controlo sobre o teu corpo e sobre os teus pensamentos, e a escuridão tornou-se permanente.",
-      injuries:
-        "Os ferimentos provaram ser demasiado graves. A tua luta por sobreviver chegou ao fim entre a dor e o silêncio.",
-      hunger:
-        "A fome venceu-te. Sem forças para continuar, o teu corpo cedeu antes de encontrares respostas.",
-      exhaustion:
-        "A exaustão esgotou-te por completo. Não te restou energia para dar mais um passo."
+      fear: "Medo no maximo.",
+      injuries: "Ferimentos no maximo.",
+      hunger: "Fome no maximo.",
+      exhaustion: "Exaustao no maximo."
     };
 
-    return `A tua jornada termina aqui.\n\n${endings[cause]}\n\nO abrigo, a cidade e a procura pela tua mãe ficam para trás — para sempre.`;
+    return `A sessao termina aqui.\n\n${endings[cause]}`;
   }
 };

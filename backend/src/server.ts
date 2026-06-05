@@ -6,18 +6,15 @@ import {
   OPENROUTER_MODELS,
   resolveOpenRouterModel
 } from "../../shared/adventureSettings.ts";
-import {
-  buildCompletionParams,
-  buildSummaryPrompt,
-  llmConfig
-} from "./game/llmConfig.ts";
+import { buildCompletionParams, llmConfig } from "./game/llmConfig.ts";
 import { normalizeAttributes, normalizeStatus } from "./game/gameState.ts";
-import { formatMemoryForPrompt, normalizeMemory } from "./game/memory.ts";
-import { normalizeAdventureSettings } from "./game/prompt/adventureSettings.ts";
+import { normalizeMemory } from "./game/memory.ts";
 import {
   buildBaseSystemPrompt,
-  buildSystemPrompt
-} from "./game/prompt/buildSystemPrompt.ts";
+  buildSummaryPrompt,
+  buildSystemPrompt,
+  normalizeAdventureSettings
+} from "./game/systemPrompt.ts";
 import { estimateTextTokens } from "./game/tokens.ts";
 import type {
   AdventureSettings,
@@ -36,7 +33,7 @@ const openai = llmConfig.apiKey
     })
   : null;
 
-const FALLBACK_REPLY = "O silêncio envolve-te. A escuridão continua.";
+const FALLBACK_REPLY = "";
 
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
@@ -100,7 +97,6 @@ app.post("/api/play", async (request, response) => {
 
 app.post("/api/summary", async (request, response) => {
   const history = normalizeHistory(request.body?.history);
-  const memory = normalizeMemory(request.body?.memory);
   const cause = normalizeCause(request.body?.cause);
   const adventureSettings = normalizeAdventureSettings(
     request.body?.adventureSettings
@@ -110,7 +106,7 @@ app.post("/api/summary", async (request, response) => {
   );
 
   if (!cause) {
-    response.status(400).json({ error: "Causa de fim de jogo inválida." });
+    response.status(400).json({ error: "Causa de fim de jogo invalida." });
     return;
   }
 
@@ -122,7 +118,6 @@ app.post("/api/summary", async (request, response) => {
   try {
     const summary = await summarizeStoryWithOpenAI(
       history,
-      memory,
       cause,
       adventureSettings,
       model
@@ -138,7 +133,7 @@ app.post("/api/summary", async (request, response) => {
 async function narrateWithOpenAI(
   message: string,
   history: ClientTurn[],
-  memory: MemoryVariable[],
+  _memory: MemoryVariable[],
   attributes?: GameAttributes,
   status?: GameStatus,
   adventureSettings?: AdventureSettings,
@@ -156,15 +151,14 @@ async function narrateWithOpenAI(
   }
 
   const systemContent = buildSystemPrompt({
-    memory,
     attributes,
     status,
-    adventureSettings,
-    message,
-    history
+    adventureSettings
   });
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    { role: "system", content: systemContent },
+    ...(systemContent.trim()
+      ? [{ role: "system" as const, content: systemContent }]
+      : []),
     ...history.slice(-10).map((turn) => ({
       role: turn.role === "player" ? ("user" as const) : ("assistant" as const),
       content:
@@ -175,13 +169,16 @@ async function narrateWithOpenAI(
     { role: "user", content: message }
   ];
 
-  const completion = await createCompletionWithRetry(messages, model);
-  const modelContextLimit = getModelContextWindow(model);
+  const completion = await createCompletionWithRetry(
+    messages,
+    model,
+    adventureSettings
+  );
+  const modelContextLimit =
+    adventureSettings?.llm.contextWindowTokens || getModelContextWindow(model);
 
   return {
-    reply:
-      completion.choices[0]?.message?.content?.trim() ||
-      FALLBACK_REPLY,
+    reply: completion.choices[0]?.message?.content?.trim() || FALLBACK_REPLY,
     usage: {
       promptTokens: completion.usage?.prompt_tokens ?? 0,
       totalTokens: completion.usage?.total_tokens ?? 0,
@@ -192,7 +189,8 @@ async function narrateWithOpenAI(
 
 async function createCompletionWithRetry(
   messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
-  model: string
+  model: string,
+  adventureSettings?: AdventureSettings
 ) {
   const maxAttempts = 4;
   let lastError: unknown;
@@ -202,7 +200,7 @@ async function createCompletionWithRetry(
       return await openai!.chat.completions.create({
         model,
         messages,
-        ...buildCompletionParams()
+        ...buildCompletionParams(adventureSettings?.llm)
       });
     } catch (error) {
       lastError = error;
@@ -224,7 +222,6 @@ async function createCompletionWithRetry(
 
 async function summarizeStoryWithOpenAI(
   history: ClientTurn[],
-  memory: MemoryVariable[],
   cause: GameOverCause,
   adventureSettings: AdventureSettings,
   model: string
@@ -233,7 +230,6 @@ async function summarizeStoryWithOpenAI(
     return buildFallbackSummary(cause);
   }
 
-  const memoryContext = formatMemoryForPrompt(memory);
   const transcript = history
     .slice(-12)
     .map((turn) =>
@@ -243,23 +239,24 @@ async function summarizeStoryWithOpenAI(
     )
     .join("\n\n");
 
+  const systemContent = buildSummaryPrompt(cause, adventureSettings);
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    {
-      role: "system",
-      content: `${buildSummaryPrompt(cause)}${memoryContext}\n\nResumo editável da aventura:\n${adventureSettings.plot.storySummary}`
-    },
+    ...(systemContent.trim()
+      ? [{ role: "system" as const, content: systemContent }]
+      : []),
     {
       role: "user",
-      content: transcript || "A aventura terminou antes de qualquer ação significativa."
+      content: transcript || "A sessao terminou sem acoes significativas."
     }
   ];
 
-  const completion = await createCompletionWithRetry(messages, model);
-
-  return (
-    completion.choices[0]?.message?.content?.trim() ||
-    buildFallbackSummary(cause)
+  const completion = await createCompletionWithRetry(
+    messages,
+    model,
+    adventureSettings
   );
+
+  return completion.choices[0]?.message?.content?.trim() || buildFallbackSummary(cause);
 }
 
 function isRetryableError(error: unknown) {
@@ -311,7 +308,7 @@ function formatNarrationError(error: unknown) {
   }
 
   if (apiError.status === 502 || apiError.status === 503) {
-    return "O narrador está temporariamente indisponível. Tenta outra vez.";
+    return "O narrador esta temporariamente indisponivel. Tenta outra vez.";
   }
 
   const status = apiError.status ? `[${apiError.status}] ` : "";
@@ -372,17 +369,13 @@ function normalizeCause(value: unknown): GameOverCause | null {
 
 function buildFallbackSummary(cause: GameOverCause) {
   const endings: Record<GameOverCause, string> = {
-    fear:
-      "O medo consumiu-te por completo. Perdeste o controlo sobre o teu corpo e sobre os teus pensamentos, e a escuridão tornou-se permanente.",
-    injuries:
-      "Os ferimentos provaram ser demasiado graves. A tua luta por sobreviver chegou ao fim entre a dor e o silêncio.",
-    hunger:
-      "A fome venceu-te. Sem forças para continuar, o teu corpo cedeu antes de encontrares respostas.",
-    exhaustion:
-      "A exaustão esgotou-te por completo. Não te restou energia para dar mais um passo."
+    fear: "Medo no maximo.",
+    injuries: "Ferimentos no maximo.",
+    hunger: "Fome no maximo.",
+    exhaustion: "Exaustao no maximo."
   };
 
-  return `A tua jornada termina aqui.\n\n${endings[cause]}\n\nO abrigo, a cidade e a procura pela tua mãe ficam para trás — para sempre.`;
+  return `A sessao termina aqui.\n\n${endings[cause]}`;
 }
 
 app.listen(port, () => {

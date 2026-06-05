@@ -1,9 +1,6 @@
-import { gameContent } from "../../../shared/gameContent";
 import type { AdventureMemory, MemorySource, MemoryVariable } from "../types";
 
-export const INITIAL_MEMORY_VARIABLES: MemoryVariable[] = [
-  ...gameContent.initialMemoryVariables
-];
+export const INITIAL_MEMORY_VARIABLES: MemoryVariable[] = [];
 
 export function createInitialMemory(): AdventureMemory {
   return {

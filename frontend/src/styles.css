@@ -1743,6 +1743,17 @@ button {
   min-height: 132px;
 }
 
+.llm-config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--surface-elevated) 58%, transparent);
+}
+
 .settings-section-head {
   position: sticky;
   top: 0;
@@ -1858,6 +1869,7 @@ button {
 }
 
 .settings-add-button,
+.settings-reset-button,
 .settings-icon-button {
   display: inline-flex;
   align-items: center;
@@ -1879,6 +1891,19 @@ button {
   text-transform: uppercase;
 }
 
+.settings-reset-button {
+  gap: 8px;
+  width: fit-content;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  color: var(--accent);
+  font-size: var(--text-lg);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--accent-dim);
+}
+
 .settings-icon-button {
   width: 32px;
   height: 32px;
@@ -1887,6 +1912,8 @@ button {
 
 .settings-add-button:hover,
 .settings-add-button:focus-visible,
+.settings-reset-button:hover,
+.settings-reset-button:focus-visible,
 .settings-icon-button:hover,
 .settings-icon-button:focus-visible {
   color: var(--accent);

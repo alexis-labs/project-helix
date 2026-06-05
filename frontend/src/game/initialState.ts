@@ -1,6 +1,4 @@
 import { DEFAULT_ADVENTURE_SETTINGS } from "../../../shared/adventureSettings";
-import { gameContent } from "../../../shared/gameContent";
-import { openingNarration } from "../content/story";
 import type {
   AdventureMemory,
   AdventureSettings,
@@ -11,12 +9,15 @@ import type {
 import { createInitialMemory } from "./adventureMemory";
 
 export const INITIAL_ATTRIBUTES: GameAttributes = {
-  ...gameContent.initialAttributes
+  fear: 0,
+  injuries: 0,
+  hunger: 0,
+  exhaustion: 0
 };
 
 export const INITIAL_STATUS: GameStatus = {
-  location: gameContent.initialStatus.location,
-  inventory: [...gameContent.initialStatus.inventory]
+  location: "",
+  inventory: []
 };
 
 export type ActiveGameState = {
@@ -31,9 +32,9 @@ export type ActiveGameState = {
 
 export function createNewGameState(): ActiveGameState {
   return {
-    currentReply: openingNarration,
+    currentReply: "",
     currentAction: "",
-    history: [{ role: "narrator", content: openingNarration }],
+    history: [],
     attributes: { ...INITIAL_ATTRIBUTES },
     status: {
       location: INITIAL_STATUS.location,

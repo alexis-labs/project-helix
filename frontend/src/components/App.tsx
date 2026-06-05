@@ -78,6 +78,13 @@ function extractAttributes(narratorResponse: string): GameAttributes | null {
   const attributes: Partial<GameAttributes> = {};
 
   for (const line of lines) {
+    const asciiExhaustionMatch = line.match(/EXAUSTAO:\s*(\d+)/i);
+
+    if (asciiExhaustionMatch) {
+      attributes.exhaustion = parseInt(asciiExhaustionMatch[1], 10);
+      continue;
+    }
+
     if (line.includes("MEDO:")) {
       const match = line.match(/MEDO:\s*(\d+)/);
       if (match) attributes.fear = parseInt(match[1], 10);
@@ -105,7 +112,24 @@ function extractAttributes(narratorResponse: string): GameAttributes | null {
   return null;
 }
 
+function normalizeUiLabel(line: string) {
+  return line
+    .trim()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLocaleUpperCase("pt-PT");
+}
+
 function isUiStateHeading(line: string) {
+  const normalized = normalizeUiLabel(line);
+
+  if (
+    /^(MEDO|FERIMENTOS|FOME|EXAUSTAO|INVENTARIO|LOCALIZACAO|OBJETIVO ATUAL):/i.test(
+      normalized
+    )
+  ) {
+    return true;
+  }
   return /^(MEDO|FERIMENTOS|FOME|EXAUSTÃO|INVENTÁRIO|LOCALIZAÇÃO|OBJETIVO ATUAL):/i.test(
     line.trim()
   );
@@ -113,6 +137,35 @@ function isUiStateHeading(line: string) {
 
 function extractInventory(narratorResponse: string): string[] | null {
   const lines = narratorResponse.split("\n");
+  const normalizedInventoryStart = lines.findIndex((line) =>
+    /^INVENTARIO:/i.test(normalizeUiLabel(line))
+  );
+
+  if (normalizedInventoryStart !== -1) {
+    const items: string[] = [];
+
+    for (const rawLine of lines.slice(normalizedInventoryStart + 1)) {
+      const line = rawLine.trim();
+
+      if (isUiStateHeading(line)) {
+        break;
+      }
+
+      if (!line) {
+        continue;
+      }
+
+      const item = line.replace(/^[-*]\s*/, "").trim();
+
+      if (/^(nenhum|vazio|sem itens|\(.*\))$/i.test(item)) {
+        continue;
+      }
+
+      items.push(item);
+    }
+
+    return items;
+  }
   const inventoryStart = lines.findIndex((line) =>
     /^INVENTÁRIO:/i.test(line.trim())
   );
@@ -152,6 +205,37 @@ function stripPlaceholder(value: string) {
 
 function extractLocation(narratorResponse: string): string | null {
   const lines = narratorResponse.split("\n");
+  const normalizedLocationStart = lines.findIndex((line) =>
+    /^LOCALIZACAO:/i.test(normalizeUiLabel(line))
+  );
+
+  if (normalizedLocationStart !== -1) {
+    const firstLineValue = lines[normalizedLocationStart]
+      .split(":")
+      .slice(1)
+      .join(":")
+      .trim();
+
+    if (firstLineValue) {
+      return stripPlaceholder(firstLineValue);
+    }
+
+    for (const rawLine of lines.slice(normalizedLocationStart + 1)) {
+      const line = rawLine.trim();
+
+      if (!line) {
+        continue;
+      }
+
+      if (isUiStateHeading(line)) {
+        break;
+      }
+
+      return stripPlaceholder(line);
+    }
+
+    return null;
+  }
   const locationStart = lines.findIndex((line) =>
     /^LOCALIZAÇÃO:/i.test(line.trim())
   );
@@ -387,6 +471,42 @@ export function App() {
       status,
       memory,
       adventureSettings: nextSettings
+    });
+  }
+
+  function updateAttributes(nextAttributes: GameAttributes) {
+    setAttributes(nextAttributes);
+
+    if (screen !== "playing") {
+      return;
+    }
+
+    persistProgress({
+      currentReply,
+      currentAction,
+      history,
+      attributes: nextAttributes,
+      status,
+      memory,
+      adventureSettings
+    });
+  }
+
+  function updateStatus(nextStatus: GameStatus) {
+    setStatus(nextStatus);
+
+    if (screen !== "playing") {
+      return;
+    }
+
+    persistProgress({
+      currentReply,
+      currentAction,
+      history,
+      attributes,
+      status: nextStatus,
+      memory,
+      adventureSettings
     });
   }
 
@@ -672,12 +792,16 @@ export function App() {
             <AdventureSettingsPanel
               activeSection={activeSettingsSection}
               adventureSettings={adventureSettings}
+              attributes={attributes}
               ereaderTone={ereadTone}
               fontScale={fontScale}
+              status={status}
               onAdventureSettingsChange={updateAdventureSettings}
               onAppearanceChange={updateAppearance}
+              onAttributesChange={updateAttributes}
               onClose={() => setActiveCenterPanel(null)}
               onSectionChange={openSettingsPanel}
+              onStatusChange={updateStatus}
             />
           ) : null}
         </div>

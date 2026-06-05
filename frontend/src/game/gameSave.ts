@@ -1,4 +1,7 @@
-import { DEFAULT_ADVENTURE_SETTINGS } from "../../../shared/adventureSettings";
+import {
+  DEFAULT_ADVENTURE_SETTINGS,
+  resolveOpenRouterModel
+} from "../../../shared/adventureSettings";
 import type { ActiveGameState } from "./initialState";
 import { createInitialMemory } from "./adventureMemory";
 import type {
@@ -11,7 +14,7 @@ import type {
 } from "../types";
 
 const STORAGE_KEY = "blindfold-save";
-const SAVE_VERSION = 3;
+const SAVE_VERSION = 5;
 
 export type SavedGamePayload = {
   version: number;
@@ -116,14 +119,21 @@ function cloneDefaultAdventureSettings(): AdventureSettings {
   return structuredClone(DEFAULT_ADVENTURE_SETTINGS);
 }
 
-function normalizeText(value: unknown, fallback: string) {
-  return typeof value === "string" ? value : fallback;
+function normalizeText(value: unknown, fallback: string, maxLength = 8000) {
+  return typeof value === "string" ? value.slice(0, maxLength) : fallback;
 }
 
-function normalizeStringList(value: unknown, fallback: string[]) {
-  return Array.isArray(value) && value.every((entry) => typeof entry === "string")
-    ? value
-    : fallback;
+function normalizeNumber(
+  value: unknown,
+  fallback: number,
+  min: number,
+  max: number
+) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return fallback;
+  }
+
+  return Math.min(max, Math.max(min, value));
 }
 
 function normalizeAdventureSettings(value: unknown): AdventureSettings {
@@ -133,66 +143,54 @@ function normalizeAdventureSettings(value: unknown): AdventureSettings {
     return defaults;
   }
 
-  const plot = isRecord(value.plot) ? value.plot : {};
-  const details = isRecord(value.details) ? value.details : {};
   const appearance = isRecord(value.appearance) ? value.appearance : {};
-  const storyCards = Array.isArray(value.storyCards)
-    ? value.storyCards
-        .filter(isRecord)
-        .map((card, index) => ({
-          id: normalizeText(card.id, `card-${index + 1}`),
-          title: normalizeText(card.title, ""),
-          triggers: normalizeStringList(card.triggers, []),
-          text: normalizeText(card.text, ""),
-          isActive:
-            typeof card.isActive === "boolean" ? card.isActive : true
-        }))
-        .filter((card) => card.title.trim() && card.text.trim())
-    : defaults.storyCards;
+  const llm = isRecord(value.llm) ? value.llm : {};
 
   return {
-    plot: {
-      aiInstructions: normalizeText(
-        plot.aiInstructions,
-        defaults.plot.aiInstructions
-      ),
-      storySummary: normalizeText(plot.storySummary, defaults.plot.storySummary),
-      plotEssentials: normalizeText(
-        plot.plotEssentials,
-        defaults.plot.plotEssentials
-      ),
-      authorNote: normalizeText(plot.authorNote, defaults.plot.authorNote),
-      thirdPerson:
-        typeof plot.thirdPerson === "boolean"
-          ? plot.thirdPerson
-          : defaults.plot.thirdPerson
-    },
-    storyCards: storyCards.length > 0 ? storyCards : defaults.storyCards,
-    details: {
-      title: normalizeText(details.title, defaults.details.title),
-      description: normalizeText(details.description, defaults.details.description),
-      tags: normalizeStringList(details.tags, defaults.details.tags),
-      visibility:
-        details.visibility === "local" || details.visibility === "private"
-          ? details.visibility
-          : defaults.details.visibility,
-      rating:
-        details.rating === "teen" || details.rating === "mature"
-          ? details.rating
-          : defaults.details.rating
-    },
+    prompt: normalizeText(value.prompt, defaults.prompt, 20_000),
+    additionalMemories: normalizeText(
+      value.additionalMemories,
+      defaults.additionalMemories,
+      12_000
+    ),
     appearance: {
       theme: appearance.theme === "light" ? "light" : defaults.appearance.theme,
-      ereaderTone:
-        typeof appearance.ereaderTone === "number"
-          ? appearance.ereaderTone
-          : defaults.appearance.ereaderTone,
-      fontScale:
-        typeof appearance.fontScale === "number"
-          ? appearance.fontScale
-          : defaults.appearance.fontScale
+      ereaderTone: normalizeNumber(
+        appearance.ereaderTone,
+        defaults.appearance.ereaderTone,
+        0,
+        100
+      ),
+      fontScale: normalizeNumber(
+        appearance.fontScale,
+        defaults.appearance.fontScale,
+        70,
+        140
+      )
     },
-    selectedModel: normalizeText(value.selectedModel, defaults.selectedModel)
+    selectedModel: resolveOpenRouterModel(
+      normalizeText(value.selectedModel, defaults.selectedModel, 120)
+    ),
+    llm: {
+      temperature: normalizeNumber(
+        llm.temperature,
+        defaults.llm.temperature,
+        0,
+        2
+      ),
+      maxCompletionTokens: normalizeNumber(
+        llm.maxCompletionTokens,
+        defaults.llm.maxCompletionTokens,
+        128,
+        4096
+      ),
+      contextWindowTokens: normalizeNumber(
+        llm.contextWindowTokens,
+        defaults.llm.contextWindowTokens,
+        4096,
+        1_000_000
+      )
+    }
   };
 }
 
@@ -206,7 +204,7 @@ function parseSavedGame(raw: string): SavedGamePayload | null {
 
     const version = parsed.version;
 
-    if (version !== 1 && version !== 2 && version !== SAVE_VERSION) {
+    if (![1, 2, 3, 4, SAVE_VERSION].includes(Number(version))) {
       return null;
     }
 
@@ -222,7 +220,7 @@ function parseSavedGame(raw: string): SavedGamePayload | null {
       return null;
     }
 
-    if (version >= 2 && parsed.memory !== undefined && !isMemory(parsed.memory)) {
+    if (Number(version) >= 2 && parsed.memory !== undefined && !isMemory(parsed.memory)) {
       return null;
     }
 

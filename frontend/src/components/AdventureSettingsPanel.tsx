@@ -1,64 +1,84 @@
 import { type ChangeEvent } from "react";
 import {
+  Activity,
+  Backpack,
   BrainCircuit,
-  Info,
+  MapPin,
+  NotebookText,
   Palette,
-  Plus,
   ScrollText,
-  StickyNote,
-  Trash2,
   X
 } from "lucide-react";
 import { OPENROUTER_MODELS } from "../../../shared/adventureSettings";
 import { EreaderToneSlider } from "./EreaderToneSlider";
 import { FontSizeSlider } from "./FontSizeSlider";
-import type { AdventureSettings, StoryCard } from "../types";
+import type { AdventureSettings, GameAttributes, GameStatus } from "../types";
 
 export type SettingsSection =
-  | "plot"
-  | "storyCards"
-  | "details"
+  | "prompt"
+  | "stats"
+  | "items"
+  | "location"
+  | "memories"
   | "models"
   | "appearance";
 
 type AdventureSettingsPanelProps = {
   activeSection: SettingsSection;
   adventureSettings: AdventureSettings;
+  attributes: GameAttributes;
   ereaderTone: number;
   fontScale: number;
+  status: GameStatus;
   onAdventureSettingsChange: (settings: AdventureSettings) => void;
   onAppearanceChange: (appearance: AdventureSettings["appearance"]) => void;
+  onAttributesChange: (attributes: GameAttributes) => void;
   onClose: () => void;
   onSectionChange: (section: SettingsSection) => void;
+  onStatusChange: (status: GameStatus) => void;
 };
 
 const settingsTabs: {
   id: SettingsSection;
-  group: "Adventure" | "Gameplay";
+  group: "Sandbox" | "Gameplay";
   label: string;
   description: string;
   icon: typeof ScrollText;
 }[] = [
   {
-    id: "plot",
-    group: "Adventure",
-    label: "Plot",
-    description: "Regras, resumo e tom enviados ao narrador.",
+    id: "prompt",
+    group: "Sandbox",
+    label: "Prompt",
+    description: "System prompt enviado ao modelo. Vazio por defeito.",
     icon: ScrollText
   },
   {
-    id: "storyCards",
-    group: "Adventure",
-    label: "Story Cards",
-    description: "Memorias ativadas por triggers no texto recente.",
-    icon: StickyNote
+    id: "stats",
+    group: "Sandbox",
+    label: "Stats",
+    description: "Estado numerico atual do jogo.",
+    icon: Activity
   },
   {
-    id: "details",
-    group: "Adventure",
-    label: "Details",
-    description: "Metadados locais desta aventura.",
-    icon: Info
+    id: "items",
+    group: "Sandbox",
+    label: "Items",
+    description: "Itens atuais na mochila.",
+    icon: Backpack
+  },
+  {
+    id: "location",
+    group: "Sandbox",
+    label: "Localizacao",
+    description: "Local atual enviado ao modelo.",
+    icon: MapPin
+  },
+  {
+    id: "memories",
+    group: "Sandbox",
+    label: "Memorias adicionais",
+    description: "Notas livres adicionadas ao system prompt.",
+    icon: NotebookText
   },
   {
     id: "models",
@@ -83,76 +103,60 @@ export const settingsNavItems = settingsTabs.map(({ id, group, label, icon }) =>
   icon
 }));
 
-function splitCommaList(value: string) {
+function clampStat(value: number) {
+  if (Number.isNaN(value)) {
+    return 0;
+  }
+
+  return Math.min(100, Math.max(0, Math.round(value)));
+}
+
+function splitLines(value: string) {
   return value
-    .split(",")
+    .split("\n")
     .map((entry) => entry.trim())
     .filter(Boolean);
 }
 
-function createStoryCard(): StoryCard {
-  return {
-    id: `card-${Date.now()}`,
-    title: "Nova memoria",
-    triggers: [],
-    text: "",
-    isActive: true
-  };
+function joinLines(values: string[]) {
+  return values.join("\n");
 }
 
 export function AdventureSettingsPanel({
   activeSection,
   adventureSettings,
+  attributes,
   ereaderTone,
   fontScale,
+  status,
   onAdventureSettingsChange,
   onAppearanceChange,
+  onAttributesChange,
   onClose,
-  onSectionChange
+  onSectionChange,
+  onStatusChange
 }: AdventureSettingsPanelProps) {
   const activeTab =
     settingsTabs.find((tab) => tab.id === activeSection) ?? settingsTabs[0];
 
-  function updatePlot<K extends keyof AdventureSettings["plot"]>(
-    key: K,
-    value: AdventureSettings["plot"][K]
-  ) {
+  function updatePrompt(prompt: string) {
     onAdventureSettingsChange({
       ...adventureSettings,
-      plot: { ...adventureSettings.plot, [key]: value }
+      prompt
     });
   }
 
-  function updateDetails<K extends keyof AdventureSettings["details"]>(
-    key: K,
-    value: AdventureSettings["details"][K]
-  ) {
+  function updateAdditionalMemories(additionalMemories: string) {
     onAdventureSettingsChange({
       ...adventureSettings,
-      details: { ...adventureSettings.details, [key]: value }
+      additionalMemories
     });
   }
 
-  function updateStoryCard(cardId: string, nextCard: StoryCard) {
-    onAdventureSettingsChange({
-      ...adventureSettings,
-      storyCards: adventureSettings.storyCards.map((card) =>
-        card.id === cardId ? nextCard : card
-      )
-    });
-  }
-
-  function removeStoryCard(cardId: string) {
-    onAdventureSettingsChange({
-      ...adventureSettings,
-      storyCards: adventureSettings.storyCards.filter((card) => card.id !== cardId)
-    });
-  }
-
-  function addStoryCard() {
-    onAdventureSettingsChange({
-      ...adventureSettings,
-      storyCards: [...adventureSettings.storyCards, createStoryCard()]
+  function updateAttribute(key: keyof GameAttributes, value: number) {
+    onAttributesChange({
+      ...attributes,
+      [key]: clampStat(value)
     });
   }
 
@@ -160,6 +164,19 @@ export function AdventureSettingsPanel({
     onAdventureSettingsChange({
       ...adventureSettings,
       selectedModel: model
+    });
+  }
+
+  function updateLlm<K extends keyof AdventureSettings["llm"]>(
+    key: K,
+    value: AdventureSettings["llm"][K]
+  ) {
+    onAdventureSettingsChange({
+      ...adventureSettings,
+      llm: {
+        ...adventureSettings.llm,
+        [key]: value
+      }
     });
   }
 
@@ -179,7 +196,7 @@ export function AdventureSettingsPanel({
   }
 
   return (
-    <section className="settings-view" aria-label="Definicoes da aventura">
+    <section className="settings-view" aria-label="Definicoes da sandbox">
       <header className="settings-view-header">
         <div>
           <p>{activeTab.group}</p>
@@ -221,192 +238,165 @@ export function AdventureSettingsPanel({
       </nav>
 
       <div className="settings-view-body">
-        {activeSection === "plot" ? (
-          <section className="settings-section" aria-label="Plot">
+        {activeSection === "prompt" ? (
+          <section className="settings-section" aria-label="Prompt">
             <label className="settings-field">
-              <span>Instrucoes da IA</span>
+              <span>Prompt</span>
               <textarea
-                value={adventureSettings.plot.aiInstructions}
-                onChange={(event) =>
-                  updatePlot("aiInstructions", event.target.value)
-                }
-                rows={4}
+                value={adventureSettings.prompt}
+                onChange={(event) => updatePrompt(event.target.value)}
+                rows={14}
               />
-            </label>
-            <label className="settings-field">
-              <span>Resumo da historia</span>
-              <textarea
-                value={adventureSettings.plot.storySummary}
-                onChange={(event) => updatePlot("storySummary", event.target.value)}
-                rows={4}
-              />
-            </label>
-            <label className="settings-field">
-              <span>Essenciais do enredo</span>
-              <textarea
-                value={adventureSettings.plot.plotEssentials}
-                onChange={(event) =>
-                  updatePlot("plotEssentials", event.target.value)
-                }
-                rows={4}
-              />
-            </label>
-            <label className="settings-field">
-              <span>Nota do autor</span>
-              <textarea
-                value={adventureSettings.plot.authorNote}
-                onChange={(event) => updatePlot("authorNote", event.target.value)}
-                rows={3}
-              />
-            </label>
-            <label className="settings-check">
-              <input
-                checked={adventureSettings.plot.thirdPerson}
-                onChange={(event) => updatePlot("thirdPerson", event.target.checked)}
-                type="checkbox"
-              />
-              <span>Narrar Jack em terceira pessoa</span>
             </label>
           </section>
         ) : null}
 
-        {activeSection === "storyCards" ? (
-          <section className="settings-section" aria-label="Story Cards">
-            <button className="settings-add-button" onClick={addStoryCard} type="button">
-              <Plus size={15} strokeWidth={1.8} aria-hidden="true" />
-              <span>Adicionar card</span>
-            </button>
-            <div className="story-card-list">
-              {adventureSettings.storyCards.map((card) => (
-                <article className="story-card-editor" key={card.id}>
-                  <div className="story-card-editor-head">
-                    <label className="settings-check">
-                      <input
-                        checked={card.isActive}
-                        onChange={(event) =>
-                          updateStoryCard(card.id, {
-                            ...card,
-                            isActive: event.target.checked
-                          })
-                        }
-                        type="checkbox"
-                      />
-                      <span>Ativo</span>
-                    </label>
-                    <button
-                      aria-label="Apagar story card"
-                      className="settings-icon-button"
-                      onClick={() => removeStoryCard(card.id)}
-                      type="button"
-                    >
-                      <Trash2 size={15} strokeWidth={1.6} aria-hidden="true" />
-                    </button>
-                  </div>
-                  <label className="settings-field">
-                    <span>Titulo</span>
-                    <input
-                      value={card.title}
-                      onChange={(event) =>
-                        updateStoryCard(card.id, {
-                          ...card,
-                          title: event.target.value
-                        })
-                      }
-                    />
-                  </label>
-                  <label className="settings-field">
-                    <span>Triggers</span>
-                    <input
-                      value={card.triggers.join(", ")}
-                      onChange={(event) =>
-                        updateStoryCard(card.id, {
-                          ...card,
-                          triggers: splitCommaList(event.target.value)
-                        })
-                      }
-                      placeholder="abrigo, escola, olhos"
-                    />
-                  </label>
-                  <label className="settings-field">
-                    <span>Texto</span>
-                    <textarea
-                      value={card.text}
-                      onChange={(event) =>
-                        updateStoryCard(card.id, {
-                          ...card,
-                          text: event.target.value
-                        })
-                      }
-                      rows={4}
-                    />
-                  </label>
-                </article>
-              ))}
+        {activeSection === "stats" ? (
+          <section className="settings-section" aria-label="Stats">
+            <div className="llm-config-grid">
+              <label className="settings-field">
+                <span>Medo</span>
+                <input
+                  max={100}
+                  min={0}
+                  onChange={(event) =>
+                    updateAttribute("fear", Number(event.target.value))
+                  }
+                  type="number"
+                  value={attributes.fear}
+                />
+              </label>
+              <label className="settings-field">
+                <span>Ferimentos</span>
+                <input
+                  max={100}
+                  min={0}
+                  onChange={(event) =>
+                    updateAttribute("injuries", Number(event.target.value))
+                  }
+                  type="number"
+                  value={attributes.injuries}
+                />
+              </label>
+              <label className="settings-field">
+                <span>Fome</span>
+                <input
+                  max={100}
+                  min={0}
+                  onChange={(event) =>
+                    updateAttribute("hunger", Number(event.target.value))
+                  }
+                  type="number"
+                  value={attributes.hunger}
+                />
+              </label>
+              <label className="settings-field">
+                <span>Exaustao</span>
+                <input
+                  max={100}
+                  min={0}
+                  onChange={(event) =>
+                    updateAttribute("exhaustion", Number(event.target.value))
+                  }
+                  type="number"
+                  value={attributes.exhaustion}
+                />
+              </label>
             </div>
           </section>
         ) : null}
 
-        {activeSection === "details" ? (
-          <section className="settings-section" aria-label="Details">
+        {activeSection === "items" ? (
+          <section className="settings-section" aria-label="Items">
             <label className="settings-field">
-              <span>Titulo</span>
-              <input
-                value={adventureSettings.details.title}
-                onChange={(event) => updateDetails("title", event.target.value)}
-              />
-            </label>
-            <label className="settings-field">
-              <span>Descricao</span>
+              <span>Mochila</span>
               <textarea
-                value={adventureSettings.details.description}
+                value={joinLines(status.inventory)}
                 onChange={(event) =>
-                  updateDetails("description", event.target.value)
+                  onStatusChange({
+                    ...status,
+                    inventory: splitLines(event.target.value)
+                  })
                 }
-                rows={4}
+                rows={12}
               />
             </label>
+          </section>
+        ) : null}
+
+        {activeSection === "location" ? (
+          <section className="settings-section" aria-label="Localizacao">
             <label className="settings-field">
-              <span>Tags</span>
+              <span>Localizacao</span>
               <input
-                value={adventureSettings.details.tags.join(", ")}
-                onChange={(event) => updateDetails("tags", splitCommaList(event.target.value))}
+                value={status.location}
+                onChange={(event) =>
+                  onStatusChange({
+                    ...status,
+                    location: event.target.value
+                  })
+                }
               />
             </label>
+          </section>
+        ) : null}
+
+        {activeSection === "memories" ? (
+          <section className="settings-section" aria-label="Memorias adicionais">
             <label className="settings-field">
-              <span>Visibilidade</span>
-              <select
-                value={adventureSettings.details.visibility}
-                onChange={(event) =>
-                  updateDetails(
-                    "visibility",
-                    event.target.value === "local" ? "local" : "private"
-                  )
-                }
-              >
-                <option value="private">Privada</option>
-                <option value="local">Local</option>
-              </select>
-            </label>
-            <label className="settings-field">
-              <span>Classificacao</span>
-              <select
-                value={adventureSettings.details.rating}
-                onChange={(event) =>
-                  updateDetails(
-                    "rating",
-                    event.target.value === "teen" ? "teen" : "mature"
-                  )
-                }
-              >
-                <option value="teen">Teen</option>
-                <option value="mature">Mature</option>
-              </select>
+              <span>Memorias adicionais</span>
+              <textarea
+                value={adventureSettings.additionalMemories}
+                onChange={(event) => updateAdditionalMemories(event.target.value)}
+                rows={14}
+              />
             </label>
           </section>
         ) : null}
 
         {activeSection === "models" ? (
           <section className="settings-section" aria-label="AI Models">
+            <div className="llm-config-grid">
+              <label className="settings-field">
+                <span>Temperature</span>
+                <input
+                  max={2}
+                  min={0}
+                  onChange={(event) =>
+                    updateLlm("temperature", Number(event.target.value))
+                  }
+                  step={0.05}
+                  type="number"
+                  value={adventureSettings.llm.temperature}
+                />
+              </label>
+              <label className="settings-field">
+                <span>Max completion tokens</span>
+                <input
+                  max={4096}
+                  min={128}
+                  onChange={(event) =>
+                    updateLlm("maxCompletionTokens", Number(event.target.value))
+                  }
+                  step={128}
+                  type="number"
+                  value={adventureSettings.llm.maxCompletionTokens}
+                />
+              </label>
+              <label className="settings-field">
+                <span>Context window</span>
+                <input
+                  max={1000000}
+                  min={4096}
+                  onChange={(event) =>
+                    updateLlm("contextWindowTokens", Number(event.target.value))
+                  }
+                  step={1024}
+                  type="number"
+                  value={adventureSettings.llm.contextWindowTokens}
+                />
+              </label>
+            </div>
             <div className="model-option-list">
               {OPENROUTER_MODELS.map((model) => (
                 <label

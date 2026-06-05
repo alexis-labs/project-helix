@@ -83,7 +83,7 @@ export function HistoryPanel({
             <BookMarked size={17} strokeWidth={1.7} aria-hidden="true" />
             <div>
               <p className="settings-kicker">Definicoes</p>
-              <h2>Aventura</h2>
+              <h2>Sandbox</h2>
             </div>
           </div>
 

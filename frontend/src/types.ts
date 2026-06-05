@@ -2,8 +2,7 @@ import type { LucideIcon } from "lucide-react";
 
 import type {
   AdventureSettings,
-  OpenRouterModelOption,
-  StoryCard
+  OpenRouterModelOption
 } from "../../shared/adventureSettings";
 
 import type {
@@ -19,8 +18,7 @@ export type {
   GameStatus,
   MemorySource,
   MemoryVariable,
-  OpenRouterModelOption,
-  StoryCard
+  OpenRouterModelOption
 };
 
 export type Turn = {

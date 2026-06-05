@@ -82,7 +82,7 @@ export function estimateNextRequestTokens(input: {
 export function getFallbackContextLimits(): ContextLimits {
   return {
     contextWindowTokens: Number(import.meta.env.VITE_CONTEXT_WINDOW) || DEFAULT_CONTEXT_WINDOW,
-    estimatedSystemPromptTokens: 2900
+    estimatedSystemPromptTokens: 0
   };
 }
 
