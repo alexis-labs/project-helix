@@ -1,8 +1,11 @@
-import { type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import {
   Activity,
+  AlertTriangle,
   Backpack,
   BrainCircuit,
+  CheckCircle2,
+  RefreshCw,
   MapPin,
   NotebookText,
   Palette,
@@ -27,15 +30,14 @@ type AdventureSettingsPanelProps = {
   activeSection: SettingsSection;
   adventureSettings: AdventureSettings;
   attributes: GameAttributes;
-  ereaderTone: number;
-  fontScale: number;
   status: GameStatus;
-  onAdventureSettingsChange: (settings: AdventureSettings) => void;
-  onAppearanceChange: (appearance: AdventureSettings["appearance"]) => void;
-  onAttributesChange: (attributes: GameAttributes) => void;
+  onApplyChanges: (
+    settings: AdventureSettings,
+    attributes: GameAttributes,
+    status: GameStatus
+  ) => void;
   onClose: () => void;
   onSectionChange: (section: SettingsSection) => void;
-  onStatusChange: (status: GameStatus) => void;
 };
 
 const settingsTabs: {
@@ -122,47 +124,119 @@ function joinLines(values: string[]) {
   return values.join("\n");
 }
 
+function cloneSettings(settings: AdventureSettings): AdventureSettings {
+  return structuredClone(settings);
+}
+
+function cloneAttributes(nextAttributes: GameAttributes): GameAttributes {
+  return { ...nextAttributes };
+}
+
+function cloneStatus(nextStatus: GameStatus): GameStatus {
+  return {
+    location: nextStatus.location,
+    inventory: [...nextStatus.inventory]
+  };
+}
+
+function areDraftsEqual(
+  settings: AdventureSettings,
+  attributes: GameAttributes,
+  status: GameStatus,
+  draftSettings: AdventureSettings,
+  draftAttributes: GameAttributes,
+  draftStatus: GameStatus
+) {
+  return (
+    JSON.stringify(settings) === JSON.stringify(draftSettings) &&
+    JSON.stringify(attributes) === JSON.stringify(draftAttributes) &&
+    JSON.stringify(status) === JSON.stringify(draftStatus)
+  );
+}
+
 export function AdventureSettingsPanel({
   activeSection,
   adventureSettings,
   attributes,
-  ereaderTone,
-  fontScale,
   status,
-  onAdventureSettingsChange,
-  onAppearanceChange,
-  onAttributesChange,
+  onApplyChanges,
   onClose,
-  onSectionChange,
-  onStatusChange
+  onSectionChange
 }: AdventureSettingsPanelProps) {
   const activeTab =
     settingsTabs.find((tab) => tab.id === activeSection) ?? settingsTabs[0];
+  const [draftSettings, setDraftSettings] = useState(() =>
+    cloneSettings(adventureSettings)
+  );
+  const [draftAttributes, setDraftAttributes] = useState(() =>
+    cloneAttributes(attributes)
+  );
+  const [draftStatus, setDraftStatus] = useState(() => cloneStatus(status));
+  const [applyStatus, setApplyStatus] = useState<
+    "idle" | "dirty" | "success" | "error"
+  >("idle");
+  const hasDraftChanges = !areDraftsEqual(
+    adventureSettings,
+    attributes,
+    status,
+    draftSettings,
+    draftAttributes,
+    draftStatus
+  );
+  const visibleApplyStatus = hasDraftChanges ? "dirty" : applyStatus;
+
+  useEffect(() => {
+    setDraftSettings(cloneSettings(adventureSettings));
+  }, [adventureSettings]);
+
+  useEffect(() => {
+    setDraftAttributes(cloneAttributes(attributes));
+  }, [attributes]);
+
+  useEffect(() => {
+    setDraftStatus(cloneStatus(status));
+  }, [status]);
+
+  useEffect(() => {
+    if (applyStatus !== "success") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setApplyStatus("idle");
+    }, 2200);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [applyStatus]);
 
   function updatePrompt(prompt: string) {
-    onAdventureSettingsChange({
-      ...adventureSettings,
+    setApplyStatus("dirty");
+    setDraftSettings({
+      ...draftSettings,
       prompt
     });
   }
 
   function updateAdditionalMemories(additionalMemories: string) {
-    onAdventureSettingsChange({
-      ...adventureSettings,
+    setApplyStatus("dirty");
+    setDraftSettings({
+      ...draftSettings,
       additionalMemories
     });
   }
 
   function updateAttribute(key: keyof GameAttributes, value: number) {
-    onAttributesChange({
-      ...attributes,
+    setApplyStatus("dirty");
+    setDraftAttributes({
+      ...draftAttributes,
       [key]: clampStat(value)
     });
   }
 
   function updateSelectedModel(model: string) {
-    onAdventureSettingsChange({
-      ...adventureSettings,
+    setApplyStatus("dirty");
+    setDraftSettings({
+      ...draftSettings,
       selectedModel: model
     });
   }
@@ -171,29 +245,54 @@ export function AdventureSettingsPanel({
     key: K,
     value: AdventureSettings["llm"][K]
   ) {
-    onAdventureSettingsChange({
-      ...adventureSettings,
+    setApplyStatus("dirty");
+    setDraftSettings({
+      ...draftSettings,
       llm: {
-        ...adventureSettings.llm,
+        ...draftSettings.llm,
         [key]: value
       }
     });
   }
 
   function updateAppearance(appearance: AdventureSettings["appearance"]) {
-    onAppearanceChange(appearance);
-    onAdventureSettingsChange({
-      ...adventureSettings,
+    setApplyStatus("dirty");
+    setDraftSettings({
+      ...draftSettings,
       appearance
     });
   }
 
   function handleThemeChange(event: ChangeEvent<HTMLSelectElement>) {
     updateAppearance({
-      ...adventureSettings.appearance,
+      ...draftSettings.appearance,
       theme: event.target.value === "light" ? "light" : "dark"
     });
   }
+
+  function applyDrafts() {
+    try {
+      onApplyChanges(draftSettings, draftAttributes, draftStatus);
+      setApplyStatus("success");
+    } catch {
+      setApplyStatus("error");
+    }
+  }
+
+  const ApplyIcon =
+    visibleApplyStatus === "success"
+      ? CheckCircle2
+      : visibleApplyStatus === "error"
+        ? AlertTriangle
+        : RefreshCw;
+  const applyLabel =
+    visibleApplyStatus === "success"
+      ? "Atualizado"
+      : visibleApplyStatus === "error"
+        ? "Erro"
+        : visibleApplyStatus === "dirty"
+          ? "Atualizar alterações"
+          : "Atualizar";
 
   return (
     <section className="settings-view" aria-label="Definicoes da sandbox">
@@ -238,12 +337,24 @@ export function AdventureSettingsPanel({
       </nav>
 
       <div className="settings-view-body">
+        <button
+          className={[
+            "settings-apply-button",
+            `is-${visibleApplyStatus}`
+          ].join(" ")}
+          onClick={applyDrafts}
+          type="button"
+        >
+          <ApplyIcon size={15} strokeWidth={1.8} aria-hidden="true" />
+          <span>{applyLabel}</span>
+        </button>
+
         {activeSection === "prompt" ? (
           <section className="settings-section" aria-label="Prompt">
             <label className="settings-field">
               <span>Prompt</span>
               <textarea
-                value={adventureSettings.prompt}
+                value={draftSettings.prompt}
                 onChange={(event) => updatePrompt(event.target.value)}
                 rows={14}
               />
@@ -263,7 +374,7 @@ export function AdventureSettingsPanel({
                     updateAttribute("fear", Number(event.target.value))
                   }
                   type="number"
-                  value={attributes.fear}
+                  value={draftAttributes.fear}
                 />
               </label>
               <label className="settings-field">
@@ -275,7 +386,7 @@ export function AdventureSettingsPanel({
                     updateAttribute("injuries", Number(event.target.value))
                   }
                   type="number"
-                  value={attributes.injuries}
+                  value={draftAttributes.injuries}
                 />
               </label>
               <label className="settings-field">
@@ -287,7 +398,7 @@ export function AdventureSettingsPanel({
                     updateAttribute("hunger", Number(event.target.value))
                   }
                   type="number"
-                  value={attributes.hunger}
+                  value={draftAttributes.hunger}
                 />
               </label>
               <label className="settings-field">
@@ -299,7 +410,7 @@ export function AdventureSettingsPanel({
                     updateAttribute("exhaustion", Number(event.target.value))
                   }
                   type="number"
-                  value={attributes.exhaustion}
+                  value={draftAttributes.exhaustion}
                 />
               </label>
             </div>
@@ -311,13 +422,14 @@ export function AdventureSettingsPanel({
             <label className="settings-field">
               <span>Mochila</span>
               <textarea
-                value={joinLines(status.inventory)}
-                onChange={(event) =>
-                  onStatusChange({
-                    ...status,
+                value={joinLines(draftStatus.inventory)}
+                onChange={(event) => {
+                  setApplyStatus("dirty");
+                  setDraftStatus({
+                    ...draftStatus,
                     inventory: splitLines(event.target.value)
-                  })
-                }
+                  });
+                }}
                 rows={12}
               />
             </label>
@@ -329,13 +441,14 @@ export function AdventureSettingsPanel({
             <label className="settings-field">
               <span>Localizacao</span>
               <input
-                value={status.location}
-                onChange={(event) =>
-                  onStatusChange({
-                    ...status,
+                value={draftStatus.location}
+                onChange={(event) => {
+                  setApplyStatus("dirty");
+                  setDraftStatus({
+                    ...draftStatus,
                     location: event.target.value
-                  })
-                }
+                  });
+                }}
               />
             </label>
           </section>
@@ -346,7 +459,7 @@ export function AdventureSettingsPanel({
             <label className="settings-field">
               <span>Memorias adicionais</span>
               <textarea
-                value={adventureSettings.additionalMemories}
+                value={draftSettings.additionalMemories}
                 onChange={(event) => updateAdditionalMemories(event.target.value)}
                 rows={14}
               />
@@ -367,7 +480,7 @@ export function AdventureSettingsPanel({
                   }
                   step={0.05}
                   type="number"
-                  value={adventureSettings.llm.temperature}
+                  value={draftSettings.llm.temperature}
                 />
               </label>
               <label className="settings-field">
@@ -380,7 +493,7 @@ export function AdventureSettingsPanel({
                   }
                   step={128}
                   type="number"
-                  value={adventureSettings.llm.maxCompletionTokens}
+                  value={draftSettings.llm.maxCompletionTokens}
                 />
               </label>
               <label className="settings-field">
@@ -393,7 +506,7 @@ export function AdventureSettingsPanel({
                   }
                   step={1024}
                   type="number"
-                  value={adventureSettings.llm.contextWindowTokens}
+                  value={draftSettings.llm.contextWindowTokens}
                 />
               </label>
             </div>
@@ -402,14 +515,14 @@ export function AdventureSettingsPanel({
                 <label
                   className={[
                     "model-option",
-                    adventureSettings.selectedModel === model.id ? "is-selected" : ""
+                    draftSettings.selectedModel === model.id ? "is-selected" : ""
                   ]
                     .filter(Boolean)
                     .join(" ")}
                   key={model.id}
                 >
                   <input
-                    checked={adventureSettings.selectedModel === model.id}
+                    checked={draftSettings.selectedModel === model.id}
                     name="openrouter-model"
                     onChange={() => updateSelectedModel(model.id)}
                     type="radio"
@@ -439,7 +552,7 @@ export function AdventureSettingsPanel({
             <label className="settings-field">
               <span>Tema</span>
               <select
-                value={adventureSettings.appearance.theme}
+                value={draftSettings.appearance.theme}
                 onChange={handleThemeChange}
               >
                 <option value="dark">Escuro</option>
@@ -449,20 +562,20 @@ export function AdventureSettingsPanel({
             <EreaderToneSlider
               onChange={(value) => {
                 updateAppearance({
-                  ...adventureSettings.appearance,
+                  ...draftSettings.appearance,
                   ereaderTone: value
                 });
               }}
-              value={ereaderTone}
+              value={draftSettings.appearance.ereaderTone}
             />
             <FontSizeSlider
               onChange={(value) => {
                 updateAppearance({
-                  ...adventureSettings.appearance,
+                  ...draftSettings.appearance,
                   fontScale: value
                 });
               }}
-              value={fontScale}
+              value={draftSettings.appearance.fontScale}
             />
           </section>
         ) : null}

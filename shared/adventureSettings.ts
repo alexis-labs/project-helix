@@ -53,8 +53,7 @@ export const OPENROUTER_MODELS = [
   }
 ] as const satisfies OpenRouterModelOption[];
 
-export const DEFAULT_OPENROUTER_MODEL =
-  "nvidia/nemotron-3.5-content-safety:free";
+export const DEFAULT_OPENROUTER_MODEL = "mistralai/mistral-nemo";
 
 export const DEFAULT_LLM_RUNTIME_SETTINGS: LlmRuntimeSettings = {
   temperature: 0.85,

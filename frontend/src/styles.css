@@ -1869,6 +1869,7 @@ button {
 }
 
 .settings-add-button,
+.settings-apply-button,
 .settings-reset-button,
 .settings-icon-button {
   display: inline-flex;
@@ -1889,6 +1890,37 @@ button {
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.settings-apply-button {
+  gap: 8px;
+  width: fit-content;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  color: var(--surface);
+  font-size: var(--text-lg);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--accent);
+}
+
+.settings-apply-button.is-dirty {
+  color: var(--text-strong);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border-strong));
+  background: var(--accent-dim);
+}
+
+.settings-apply-button.is-success {
+  color: #101611;
+  border-color: color-mix(in srgb, #8fd694 70%, var(--border-strong));
+  background: #8fd694;
+}
+
+.settings-apply-button.is-error {
+  color: #1a0d0d;
+  border-color: color-mix(in srgb, #ef8f8f 70%, var(--border-strong));
+  background: #ef8f8f;
 }
 
 .settings-reset-button {
@@ -1912,6 +1944,8 @@ button {
 
 .settings-add-button:hover,
 .settings-add-button:focus-visible,
+.settings-apply-button:hover,
+.settings-apply-button:focus-visible,
 .settings-reset-button:hover,
 .settings-reset-button:focus-visible,
 .settings-icon-button:hover,

@@ -510,6 +510,33 @@ export function App() {
     });
   }
 
+  function applySandboxConfiguration(
+    nextSettings: AdventureSettings,
+    nextAttributes: GameAttributes,
+    nextStatus: GameStatus
+  ) {
+    setAdventureSettings(nextSettings);
+    setAttributes(nextAttributes);
+    setStatus(nextStatus);
+    setTheme(nextSettings.appearance.theme);
+    setEreadTone(nextSettings.appearance.ereaderTone);
+    setFontScale(nextSettings.appearance.fontScale);
+
+    if (screen !== "playing") {
+      return;
+    }
+
+    persistProgress({
+      currentReply,
+      currentAction,
+      history,
+      attributes: nextAttributes,
+      status: nextStatus,
+      memory,
+      adventureSettings: nextSettings
+    });
+  }
+
   function updateAppearance(appearance: AdventureSettings["appearance"]) {
     setTheme(appearance.theme);
     setEreadTone(appearance.ereaderTone);
@@ -793,15 +820,10 @@ export function App() {
               activeSection={activeSettingsSection}
               adventureSettings={adventureSettings}
               attributes={attributes}
-              ereaderTone={ereadTone}
-              fontScale={fontScale}
               status={status}
-              onAdventureSettingsChange={updateAdventureSettings}
-              onAppearanceChange={updateAppearance}
-              onAttributesChange={updateAttributes}
+              onApplyChanges={applySandboxConfiguration}
               onClose={() => setActiveCenterPanel(null)}
               onSectionChange={openSettingsPanel}
-              onStatusChange={updateStatus}
             />
           ) : null}
         </div>
