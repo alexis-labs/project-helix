@@ -1,6 +1,12 @@
+import { isSkillsEnabled } from "../../../shared/adventureSettings";
+import type { LlmDebugPayload } from "../../../shared/llmDebug";
 import { emptyNarrationFallback } from "../content/story";
 import { uiText } from "../content/uiText";
-import { formatFoldersForApi, formatSkillsForApi } from "../game/adventureSkills";
+import {
+  ensureDefaultSkillLibrary,
+  formatFoldersForApi,
+  formatSkillsForApi
+} from "../game/adventureSkills";
 import type {
   AdventureSettings,
   AdventureSkill,
@@ -20,6 +26,7 @@ type PlayResponse = {
   reply?: string;
   skillUpdates?: AdventureSkill[];
   usage?: PlayUsage;
+  debug?: LlmDebugPayload;
   error?: string;
 };
 
@@ -27,6 +34,7 @@ export type NarrationResult = {
   reply: string;
   skillUpdates: AdventureSkill[];
   usage: PlayUsage | null;
+  debug: LlmDebugPayload | null;
 };
 
 async function readPlayResponse(response: Response): Promise<PlayResponse> {
@@ -68,6 +76,8 @@ export async function requestNarration(
   adventureSettings: AdventureSettings
 ): Promise<NarrationResult> {
   const apiBase = resolveApiBase();
+  const useSkills = isSkillsEnabled(adventureSettings);
+  const skillsForRequest = useSkills ? ensureDefaultSkillLibrary(skills) : skills;
   let response: Response;
 
   try {
@@ -78,8 +88,8 @@ export async function requestNarration(
         message,
         model: adventureSettings.selectedModel,
         adventureSettings,
-        skills: formatSkillsForApi(skills),
-        folders: formatFoldersForApi(skills),
+        skills: useSkills ? formatSkillsForApi(skillsForRequest) : [],
+        folders: useSkills ? formatFoldersForApi(skillsForRequest) : [],
         attributes,
         status,
         history: history.slice(-12).map((turn) => ({
@@ -114,6 +124,21 @@ export async function requestNarration(
             totalTokens: usage.totalTokens ?? usage.promptTokens,
             contextLimit: usage.contextLimit
           }
-        : null
+        : null,
+    debug: isLlmDebugPayload(data.debug) ? data.debug : null
   };
+}
+
+function isLlmDebugPayload(value: unknown): value is LlmDebugPayload {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const payload = value as Partial<LlmDebugPayload>;
+
+  return (
+    typeof payload.model === "string" &&
+    Array.isArray(payload.initialMessages) &&
+    Array.isArray(payload.rounds)
+  );
 }

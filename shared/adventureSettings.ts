@@ -1,7 +1,13 @@
+export type ReadingTypeface = "serif" | "sans";
+
 export type AdventureAppearance = {
   theme: "dark" | "light";
   ereaderTone: number;
   fontScale: number;
+  lineHeight: number;
+  contentWidth: number;
+  typeface: ReadingTypeface;
+  reducedMotion: boolean;
 };
 
 export type OpenRouterModelOption = {
@@ -22,10 +28,17 @@ export type LlmRuntimeSettings = {
 export type AdventureSettings = {
   prompt: string;
   additionalMemories: string;
+  skillsEnabled: boolean;
   appearance: AdventureAppearance;
   selectedModel: string;
   llm: LlmRuntimeSettings;
 };
+
+export function isSkillsEnabled(
+  settings?: Pick<AdventureSettings, "skillsEnabled"> | null
+) {
+  return settings?.skillsEnabled !== false;
+}
 
 export const OPENROUTER_MODELS = [
   {
@@ -64,10 +77,15 @@ export const DEFAULT_LLM_RUNTIME_SETTINGS: LlmRuntimeSettings = {
 export const DEFAULT_ADVENTURE_SETTINGS: AdventureSettings = {
   prompt: "",
   additionalMemories: "",
+  skillsEnabled: true,
   appearance: {
     theme: "dark",
     ereaderTone: 0,
-    fontScale: 92
+    fontScale: 92,
+    lineHeight: 175,
+    contentWidth: 64,
+    typeface: "serif",
+    reducedMotion: false
   },
   selectedModel: DEFAULT_OPENROUTER_MODEL,
   llm: { ...DEFAULT_LLM_RUNTIME_SETTINGS }

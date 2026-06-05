@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { BookOpen, Moon, Sun, Volume2 } from "lucide-react";
 import { fetchContextLimits } from "../api/health";
 import { requestNarration } from "../api/play";
@@ -13,6 +13,7 @@ import {
   loadSavedGame,
   saveGame
 } from "../game/gameSave";
+import { applyAppearanceToDocument } from "../game/appearance";
 import { createNewGameState } from "../game/initialState";
 import {
   createManualSkill,
@@ -62,19 +63,8 @@ import { SkillsPanel } from "./SkillsPanel";
 import { NarrationPanel } from "./NarrationPanel";
 import { StorySearchBar } from "./StorySearchBar";
 import { StorySearchResults } from "./StorySearchResults";
-
-function stripUiStateBlock(narratorResponse: string) {
-  const lines = narratorResponse.split("\n");
-  const stateBlockStart = lines.findIndex((line) =>
-    /^(ESTADO_UI:|MEDO:)/i.test(line.trim())
-  );
-
-  if (stateBlockStart === -1) {
-    return narratorResponse.trim();
-  }
-
-  return lines.slice(0, stateBlockStart).join("\n").trim();
-}
+import type { LlmDebugPayload } from "../../../shared/llmDebug";
+import { sanitizeNarratorReply } from "../../../shared/narratorReply";
 
 function extractAttributes(narratorResponse: string): GameAttributes | null {
   const lines = narratorResponse.split("\n");
@@ -301,6 +291,7 @@ export function App() {
   });
   const [currentReply, setCurrentReply] = useState(openingNarration);
   const [currentAction, setCurrentAction] = useState("");
+  const [currentLlmDebug, setCurrentLlmDebug] = useState<LlmDebugPayload | null>(null);
   const [history, setHistory] = useState<Turn[]>([
     { role: "narrator", content: openingNarration }
   ]);
@@ -374,9 +365,11 @@ export function App() {
   ];
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    window.localStorage.setItem("blindfold-theme", theme);
-  }, [theme]);
+    applyAppearanceToDocument(adventureSettings.appearance);
+    setTheme(adventureSettings.appearance.theme);
+    setEreadTone(adventureSettings.appearance.ereaderTone);
+    setFontScale(adventureSettings.appearance.fontScale);
+  }, [adventureSettings.appearance, setFontScale]);
 
   useEffect(() => {
     if (screen !== "playing") {
@@ -458,6 +451,7 @@ export function App() {
     setIsLoading(false);
     setGameOver(null);
     setActiveCenterPanel(null);
+    setCurrentLlmDebug(null);
   }
 
   function updateAdventureSettings(nextSettings: AdventureSettings) {
@@ -582,11 +576,15 @@ export function App() {
     });
   }
 
-  function updateAppearance(appearance: AdventureSettings["appearance"]) {
-    setTheme(appearance.theme);
-    setEreadTone(appearance.ereaderTone);
-    setFontScale(appearance.fontScale);
-  }
+  const updateAppearance = useCallback(
+    (appearance: AdventureSettings["appearance"]) => {
+      applyAppearanceToDocument(appearance);
+      setTheme(appearance.theme);
+      setEreadTone(appearance.ereaderTone);
+      setFontScale(appearance.fontScale);
+    },
+    [setEreadTone, setFontScale]
+  );
 
   async function triggerGameOver(
     cause: CriticalAttribute,
@@ -674,6 +672,7 @@ export function App() {
     setActiveCenterPanel(null);
     setIsLoading(true);
     setError("");
+    setCurrentLlmDebug(null);
 
     persistProgress({
       currentReply,
@@ -687,7 +686,7 @@ export function App() {
     setCanContinue(true);
 
     try {
-      const { reply, skillUpdates, usage } = await requestNarration(
+      const { reply, skillUpdates, usage, debug } = await requestNarration(
         trimmed,
         history,
         nextSkills,
@@ -695,7 +694,7 @@ export function App() {
         status,
         adventureSettings
       );
-      const visibleReply = stripUiStateBlock(reply) || reply;
+      const visibleReply = sanitizeNarratorReply(reply) || reply;
       const extractedAttributes = extractAttributes(reply);
       const nextAttributes = clampAttributes(extractedAttributes ?? attributes);
       const attributeDeltas = extractedAttributes
@@ -713,6 +712,7 @@ export function App() {
 
       setCurrentReply(visibleReply);
       setHistory(completedHistory);
+      setCurrentLlmDebug(debug);
 
       if (extractedAttributes) {
         setAttributes(nextAttributes);
@@ -833,6 +833,7 @@ export function App() {
             onApplyChanges={applySandboxConfiguration}
             onClose={() => setActiveCenterPanel(null)}
             onInventoryChange={updateInventory}
+            onPreviewAppearance={updateAppearance}
             onSectionChange={openSettingsPanel}
           />
         ) : (
@@ -872,6 +873,7 @@ export function App() {
                   currentAction={currentAction}
                   currentReply={currentReply}
                   isLoading={isLoading}
+                  llmDebug={currentLlmDebug}
                 />
                 {gameOver ? (
                   <GameOverPanel

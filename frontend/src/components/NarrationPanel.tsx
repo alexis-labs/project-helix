@@ -2,20 +2,24 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { loadingNarration } from "../content/story";
 import { uiText } from "../content/uiText";
 import type { AttributeKey } from "../game/attributeChanges";
+import type { LlmDebugPayload } from "../../../shared/llmDebug";
 import { AttributeChangeList } from "./AttributeChangeList";
+import { LlmDebugContent, LlmDebugTrigger } from "./LlmDebugPanel";
 
 type NarrationPanelProps = {
   attributeChanges?: Partial<Record<AttributeKey, number>> | null;
   currentAction: string;
   currentReply: string;
   isLoading: boolean;
+  llmDebug?: LlmDebugPayload | null;
 };
 
 export function NarrationPanel({
   attributeChanges,
   currentAction,
   currentReply,
-  isLoading
+  isLoading,
+  llmDebug = null
 }: NarrationPanelProps) {
   const targetText = isLoading ? loadingNarration : currentReply;
   const shouldReduceMotion = useMemo(
@@ -23,9 +27,15 @@ export function NarrationPanel({
     []
   );
   const [displayedText, setDisplayedText] = useState(targetText);
+  const [debugOpen, setDebugOpen] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
   const showAttributeChanges =
     !isLoading && displayedText === targetText && Boolean(currentAction);
+  const showDebug = !isLoading && Boolean(currentAction) && Boolean(llmDebug);
+
+  useEffect(() => {
+    setDebugOpen(false);
+  }, [currentAction]);
 
   useEffect(() => {
     if (shouldReduceMotion || isLoading) {
@@ -70,7 +80,19 @@ export function NarrationPanel({
           <p>{currentAction}</p>
         </div>
       ) : null}
-      <span className="speaker">{uiText.narratorLabel}</span>
+      <div className="narration-speaker-block">
+        <div className="narration-speaker-row">
+          <span className="speaker">{uiText.narratorLabel}</span>
+          {showDebug ? (
+            <LlmDebugTrigger
+              debug={llmDebug}
+              isOpen={debugOpen}
+              onToggle={() => setDebugOpen((open) => !open)}
+            />
+          ) : null}
+        </div>
+        {debugOpen && llmDebug ? <LlmDebugContent debug={llmDebug} /> : null}
+      </div>
       <p aria-label={targetText} className="typewriter-text">
         {displayedText}
         {!shouldReduceMotion && !isLoading ? (

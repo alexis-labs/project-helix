@@ -39,9 +39,9 @@ const sourceTags: Record<SkillSource, string> = {
 function normalizeSkillDraft(skill: AdventureSkills["skills"][string]) {
   return {
     ...skill,
-    title: skill.title.trim().slice(0, 80),
-    description: skill.description.trim().slice(0, 240),
-    content: skill.content.trim().slice(0, 2000)
+    title: skill.title.slice(0, 80),
+    description: skill.description.slice(0, 240),
+    content: skill.content.slice(0, 2000)
   };
 }
 
@@ -164,11 +164,12 @@ export function SkillEditorPane({
 
   return (
     <div className="skills-editor-panel">
-      <header className="skills-editor-header">
-        <div>
+      <header className="skills-editor-header skills-editor-header--compact">
+        <div className="skills-editor-header-copy">
           <p className="skills-editor-eyebrow">{uiText.skillsSkillLabel}</p>
-          <h3>{selectedSkill.title || selectedSkill.id}</h3>
-          <span className="skills-editor-breadcrumb">{breadcrumb}</span>
+          {breadcrumb ? (
+            <span className="skills-editor-breadcrumb">{breadcrumb}</span>
+          ) : null}
         </div>
         <div className="skills-editor-actions">
           <span className={`diary-tag diary-tag-${selectedSkill.source}`}>
@@ -203,24 +204,27 @@ export function SkillEditorPane({
         </div>
       </header>
 
-      <div className="skills-editor-fields">
-        <label className="settings-field">
-          <span>{uiText.skillsIdLabel}</span>
-          <input readOnly value={selectedSkill.id} />
-        </label>
-        <label className="settings-field">
-          <span>{uiText.skillsTitleLabel}</span>
-          <input
-            onChange={(event) => updateSkill(selectedSkill.id, { title: event.target.value })}
-            value={selectedSkill.title}
-          />
-        </label>
-        <label className="settings-field">
+      <div className="skills-editor-form">
+        <div className="skills-editor-meta-row">
+          <label className="settings-field settings-field--compact skills-editor-id-field">
+            <span>{uiText.skillsIdLabel}</span>
+            <input readOnly value={selectedSkill.id} />
+          </label>
+          <label className="settings-field skills-editor-title-field">
+            <span>{uiText.skillsTitleLabel}</span>
+            <input
+              onChange={(event) => updateSkill(selectedSkill.id, { title: event.target.value })}
+              value={selectedSkill.title}
+            />
+          </label>
+        </div>
+        <label className="settings-field skills-editor-description-field">
           <span>{uiText.skillsDescriptionLabel}</span>
-          <input
+          <textarea
             onChange={(event) =>
               updateSkill(selectedSkill.id, { description: event.target.value })
             }
+            rows={2}
             value={selectedSkill.description}
           />
         </label>

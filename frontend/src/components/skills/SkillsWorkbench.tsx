@@ -10,14 +10,18 @@ import { SkillsTreeSidebar } from "./SkillsTreeSidebar";
 
 type SkillsWorkbenchProps = {
   draftSkills: AdventureSkills;
+  skillsEnabled: boolean;
   theme: "dark" | "light";
   onDraftChange: (nextSkills: AdventureSkills) => void;
+  onSkillsEnabledChange: (enabled: boolean) => void;
 };
 
 export function SkillsWorkbench({
   draftSkills,
+  skillsEnabled,
   theme,
-  onDraftChange
+  onDraftChange,
+  onSkillsEnabledChange
 }: SkillsWorkbenchProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selection, setSelection] = useState<SkillSelection>(null);
@@ -47,8 +51,27 @@ export function SkillsWorkbench({
             value={searchQuery}
           />
         </label>
-        <p className="skills-workbench-hint">{uiText.skillsWorkbenchHint}</p>
+        <label className="settings-toggle skills-workbench-toggle">
+          <input
+            checked={skillsEnabled}
+            onChange={(event) => onSkillsEnabledChange(event.target.checked)}
+            type="checkbox"
+          />
+          <span aria-hidden="true" className="settings-toggle-track">
+            <span className="settings-toggle-thumb" />
+          </span>
+          <span className="settings-toggle-copy">
+            <strong>{uiText.skillsEnabledLabel}</strong>
+            <small>{uiText.skillsEnabledHint}</small>
+          </span>
+        </label>
       </div>
+      {!skillsEnabled ? (
+        <p className="skills-workbench-disabled-banner" role="status">
+          {uiText.skillsDisabledBanner}
+        </p>
+      ) : null}
+      <p className="skills-workbench-hint">{uiText.skillsWorkbenchHint}</p>
 
       <Group className="skills-workbench" orientation="horizontal">
         <Panel className="skills-workbench-tree-wrap" defaultSize={34} minSize={28}>

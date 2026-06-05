@@ -3,14 +3,21 @@ import express from "express";
 import OpenAI from "openai";
 
 import {
+  isSkillsEnabled,
   OPENROUTER_MODELS,
   resolveOpenRouterModel
 } from "../../shared/adventureSettings.ts";
+import type { LlmDebugPayload, LlmDebugRound } from "../../shared/llmDebug.ts";
+import { sanitizeNarratorReply, stripUiStateBlock } from "../../shared/narratorReply.ts";
 import { buildCompletionParams, llmConfig } from "./game/llmConfig.ts";
+import { serializeMessagesForDebug } from "./game/llmDebug.ts";
 import { normalizeAttributes, normalizeStatus } from "./game/gameState.ts";
 import {
+  autoConsultSkillsForTurn,
+  buildPlayerMessageWithSkillContext,
   executeConsultSkill,
   executeSaveSkill,
+  mergeDefaultSkillTemplates,
   normalizeFolders,
   normalizeSkills,
   SKILL_TOOLS,
@@ -66,13 +73,19 @@ app.get("/api/health", (_request, response) => {
 app.post("/api/play", async (request, response) => {
   const message = normalizeText(request.body?.message);
   const history = normalizeHistory(request.body?.history);
-  const skills = normalizeSkills(request.body?.skills);
-  const folders = normalizeFolders(request.body?.folders);
-  const attributes = normalizeAttributes(request.body?.attributes);
-  const status = normalizeStatus(request.body?.status);
   const adventureSettings = normalizeAdventureSettings(
     request.body?.adventureSettings
   );
+  const normalizedSkills = isSkillsEnabled(adventureSettings)
+    ? mergeDefaultSkillTemplates(
+        normalizeSkills(request.body?.skills),
+        normalizeFolders(request.body?.folders)
+      )
+    : { skills: [] as AdventureSkill[], folders: [] as SkillFolder[] };
+  const skills = normalizedSkills.skills;
+  const folders = normalizedSkills.folders;
+  const attributes = normalizeAttributes(request.body?.attributes);
+  const status = normalizeStatus(request.body?.status);
   const model = resolveOpenRouterModel(
     normalizeText(request.body?.model) || llmConfig.model
   );
@@ -88,7 +101,7 @@ app.post("/api/play", async (request, response) => {
   }
 
   try {
-    const { reply, skillUpdates, usage } = await narrateWithOpenAI(
+    const { reply, skillUpdates, usage, debug } = await narrateWithOpenAI(
       message,
       history,
       skills,
@@ -98,7 +111,7 @@ app.post("/api/play", async (request, response) => {
       adventureSettings,
       model
     );
-    response.json({ reply, skillUpdates, usage });
+    response.json({ reply, skillUpdates, usage, debug });
   } catch (error) {
     const details = formatNarrationError(error);
     console.error("Narration error:", details);
@@ -109,11 +122,15 @@ app.post("/api/play", async (request, response) => {
 app.post("/api/summary", async (request, response) => {
   const history = normalizeHistory(request.body?.history);
   const cause = normalizeCause(request.body?.cause);
-  const skills = normalizeSkills(request.body?.skills);
-  const folders = normalizeFolders(request.body?.folders);
   const adventureSettings = normalizeAdventureSettings(
     request.body?.adventureSettings
   );
+  const skills = isSkillsEnabled(adventureSettings)
+    ? normalizeSkills(request.body?.skills)
+    : [];
+  const folders = isSkillsEnabled(adventureSettings)
+    ? normalizeFolders(request.body?.folders)
+    : [];
   const model = resolveOpenRouterModel(
     normalizeText(request.body?.model) || llmConfig.model
   );
@@ -167,11 +184,19 @@ async function narrateWithOpenAI(
     };
   }
 
+  const recentContext = history
+    .slice(-4)
+    .map((turn) => turn.content)
+    .join(" ");
+  const consultedSkills = isSkillsEnabled(adventureSettings)
+    ? autoConsultSkillsForTurn(skills, folders, message, recentContext)
+    : [];
   const systemContent = buildSystemPrompt({
     attributes,
     status,
     skills,
     folders,
+    consultedSkills,
     adventureSettings
   });
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
@@ -185,11 +210,34 @@ async function narrateWithOpenAI(
           ? stripUiStateBlock(turn.content)
           : turn.content
     })),
-    { role: "user", content: message }
+    {
+      role: "user",
+      content: isSkillsEnabled(adventureSettings)
+        ? buildPlayerMessageWithSkillContext(message, consultedSkills)
+        : message
+    }
   ];
 
   const modelContextLimit =
     adventureSettings?.llm.contextWindowTokens || getModelContextWindow(model);
+  const completionParams = buildCompletionParams(adventureSettings?.llm);
+  const tools = isSkillsEnabled(adventureSettings) ? SKILL_TOOLS : null;
+  const playerMessageSent = isSkillsEnabled(adventureSettings)
+    ? buildPlayerMessageWithSkillContext(message, consultedSkills)
+    : message;
+  const debugBase: Omit<LlmDebugPayload, "rounds" | "usage"> = {
+    model,
+    completionParams,
+    tools,
+    consultedSkills: consultedSkills.map((skill) => ({
+      id: skill.id,
+      title: skill.title,
+      description: skill.description
+    })),
+    playerMessageRaw: message,
+    playerMessageSent,
+    initialMessages: serializeMessagesForDebug(messages)
+  };
 
   try {
     const agentResult = await runSkillAgentLoop(
@@ -201,12 +249,21 @@ async function narrateWithOpenAI(
     );
 
     return {
-      reply: agentResult.reply,
+      reply: sanitizeNarratorReply(agentResult.reply),
       skillUpdates: agentResult.skillUpdates,
       usage: {
         promptTokens: agentResult.promptTokens,
         totalTokens: agentResult.totalTokens,
         contextLimit: modelContextLimit
+      },
+      debug: {
+        ...debugBase,
+        rounds: agentResult.rounds,
+        usage: {
+          promptTokens: agentResult.promptTokens,
+          totalTokens: agentResult.totalTokens,
+          contextLimit: modelContextLimit
+        }
       }
     };
   } catch (error) {
@@ -223,14 +280,40 @@ async function narrateWithOpenAI(
       model,
       adventureSettings
     );
+    const assistantMessage = completion.choices[0]?.message;
+    const promptTokens = completion.usage?.prompt_tokens ?? 0;
+    const totalTokens = completion.usage?.total_tokens ?? 0;
 
     return {
-      reply: completion.choices[0]?.message?.content?.trim() || FALLBACK_REPLY,
+      reply: sanitizeNarratorReply(
+        assistantMessage?.content?.trim() || FALLBACK_REPLY
+      ),
       skillUpdates: [] as AdventureSkill[],
       usage: {
-        promptTokens: completion.usage?.prompt_tokens ?? 0,
-        totalTokens: completion.usage?.total_tokens ?? 0,
+        promptTokens,
+        totalTokens,
         contextLimit: modelContextLimit
+      },
+      debug: {
+        ...debugBase,
+        rounds: [
+          {
+            index: 0,
+            messagesAtStart: serializeMessagesForDebug(messages),
+            promptTokens,
+            totalTokens,
+            response: {
+              content: assistantMessage?.content ?? null,
+              toolCalls: []
+            },
+            toolResults: []
+          }
+        ],
+        usage: {
+          promptTokens,
+          totalTokens,
+          contextLimit: modelContextLimit
+        }
       }
     };
   }
@@ -243,43 +326,80 @@ async function runSkillAgentLoop(
   model: string,
   adventureSettings?: AdventureSettings
 ) {
+  const tools = isSkillsEnabled(adventureSettings) ? SKILL_TOOLS : undefined;
   let workingSkills = [...initialSkills];
   const skillUpdates: AdventureSkill[] = [];
+  const rounds: LlmDebugRound[] = [];
   let promptTokens = 0;
   let totalTokens = 0;
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration += 1) {
+    const messagesAtStart = serializeMessagesForDebug(messages);
     const completion = await createCompletionWithRetry(
       messages,
       model,
       adventureSettings,
-      SKILL_TOOLS
+      tools
     );
+    const roundPromptTokens = completion.usage?.prompt_tokens ?? 0;
+    const roundTotalTokens = completion.usage?.total_tokens ?? 0;
 
-    promptTokens += completion.usage?.prompt_tokens ?? 0;
-    totalTokens += completion.usage?.total_tokens ?? 0;
+    promptTokens += roundPromptTokens;
+    totalTokens += roundTotalTokens;
 
     const assistantMessage = completion.choices[0]?.message;
 
     if (!assistantMessage) {
+      rounds.push({
+        index: iteration,
+        messagesAtStart,
+        promptTokens: roundPromptTokens,
+        totalTokens: roundTotalTokens,
+        response: { content: null, toolCalls: [] },
+        toolResults: []
+      });
+
       return {
         reply: FALLBACK_REPLY,
         skillUpdates,
         promptTokens,
-        totalTokens
+        totalTokens,
+        rounds
       };
     }
 
     const toolCalls = assistantMessage.tool_calls ?? [];
+    const serializedToolCalls = toolCalls
+      .filter((toolCall) => toolCall.type === "function")
+      .map((toolCall) => ({
+        id: toolCall.id,
+        name: toolCall.function.name,
+        arguments: toolCall.function.arguments
+      }));
 
     if (toolCalls.length === 0) {
+      rounds.push({
+        index: iteration,
+        messagesAtStart,
+        promptTokens: roundPromptTokens,
+        totalTokens: roundTotalTokens,
+        response: {
+          content: assistantMessage.content ?? null,
+          toolCalls: []
+        },
+        toolResults: []
+      });
+
       return {
         reply: assistantMessage.content?.trim() || FALLBACK_REPLY,
         skillUpdates,
         promptTokens,
-        totalTokens
+        totalTokens,
+        rounds
       };
     }
+
+    const toolResults: LlmDebugRound["toolResults"] = [];
 
     messages.push({
       role: "assistant",
@@ -298,7 +418,7 @@ async function runSkillAgentLoop(
 
       try {
         if (toolName === "consultar_skill") {
-          toolContent = executeConsultSkill(workingSkills, args);
+          toolContent = executeConsultSkill(workingSkills, args, folders);
         } else if (toolName === "guardar_skill") {
           const result = executeSaveSkill(workingSkills, folders, args);
           workingSkills = result.skills;
@@ -314,29 +434,64 @@ async function runSkillAgentLoop(
             : "Falha ao executar a ferramenta.";
       }
 
+      toolResults.push({
+        toolCallId: toolCall.id,
+        content: toolContent
+      });
+
       messages.push({
         role: "tool",
         tool_call_id: toolCall.id,
         content: toolContent
       });
     }
+
+    rounds.push({
+      index: iteration,
+      messagesAtStart,
+      promptTokens: roundPromptTokens,
+      totalTokens: roundTotalTokens,
+      response: {
+        content: assistantMessage.content ?? null,
+        toolCalls: serializedToolCalls
+      },
+      toolResults
+    });
   }
 
+  const messagesAtStart = serializeMessagesForDebug(messages);
   const finalCompletion = await createCompletionWithRetry(
     messages,
     model,
     adventureSettings
   );
+  const roundPromptTokens = finalCompletion.usage?.prompt_tokens ?? 0;
+  const roundTotalTokens = finalCompletion.usage?.total_tokens ?? 0;
 
-  promptTokens += finalCompletion.usage?.prompt_tokens ?? 0;
-  totalTokens += finalCompletion.usage?.total_tokens ?? 0;
+  promptTokens += roundPromptTokens;
+  totalTokens += roundTotalTokens;
+
+  const finalAssistantMessage = finalCompletion.choices[0]?.message;
+
+  rounds.push({
+    index: rounds.length,
+    messagesAtStart,
+    promptTokens: roundPromptTokens,
+    totalTokens: roundTotalTokens,
+    response: {
+      content: finalAssistantMessage?.content ?? null,
+      toolCalls: []
+    },
+    toolResults: []
+  });
 
   return {
     reply:
-      finalCompletion.choices[0]?.message?.content?.trim() || FALLBACK_REPLY,
+      finalAssistantMessage?.content?.trim() || FALLBACK_REPLY,
     skillUpdates,
     promptTokens,
-    totalTokens
+    totalTokens,
+    rounds
   };
 }
 
@@ -459,19 +614,6 @@ function isRetryableError(error: unknown) {
 
   const status = (error as { status?: number }).status;
   return status === 429 || status === 502 || status === 503;
-}
-
-function stripUiStateBlock(text: string) {
-  const lines = text.split("\n");
-  const stateBlockStart = lines.findIndex((line) =>
-    /^(ESTADO_UI:|MEDO:)/i.test(line.trim())
-  );
-
-  if (stateBlockStart === -1) {
-    return text.trim();
-  }
-
-  return lines.slice(0, stateBlockStart).join("\n").trim();
 }
 
 function sleep(ms: number) {

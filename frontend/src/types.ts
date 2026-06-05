@@ -2,7 +2,8 @@ import type { LucideIcon } from "lucide-react";
 
 import type {
   AdventureSettings,
-  OpenRouterModelOption
+  OpenRouterModelOption,
+  ReadingTypeface
 } from "../../shared/adventureSettings";
 
 import type {
@@ -16,6 +17,7 @@ import type {
 
 export type {
   AdventureSettings,
+  ReadingTypeface,
   AdventureSkill,
   AdventureSkills,
   GameAttributes,

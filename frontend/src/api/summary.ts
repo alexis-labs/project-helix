@@ -1,3 +1,4 @@
+import { isSkillsEnabled } from "../../../shared/adventureSettings";
 import { uiText } from "../content/uiText";
 import { formatFoldersForApi, formatSkillsForApi } from "../game/adventureSkills";
 import type { CriticalAttribute } from "../game/attributes";
@@ -33,6 +34,7 @@ export async function requestStorySummary(
   adventureSettings: AdventureSettings
 ) {
   const apiBase = resolveApiBase();
+  const useSkills = isSkillsEnabled(adventureSettings);
   let response: Response;
 
   try {
@@ -43,8 +45,8 @@ export async function requestStorySummary(
         cause,
         model: adventureSettings.selectedModel,
         adventureSettings,
-        skills: formatSkillsForApi(skills),
-        folders: formatFoldersForApi(skills),
+        skills: useSkills ? formatSkillsForApi(skills) : [],
+        folders: useSkills ? formatFoldersForApi(skills) : [],
         history: history.slice(-12).map((turn) => ({
           role: turn.role,
           content: turn.contextContent || turn.content

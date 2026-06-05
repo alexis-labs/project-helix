@@ -1,6 +1,7 @@
 import type { AdventureSettings } from "../../../shared/adventureSettings.ts";
 import {
   DEFAULT_ADVENTURE_SETTINGS,
+  isSkillsEnabled,
   resolveOpenRouterModel
 } from "../../../shared/adventureSettings.ts";
 import type {
@@ -9,13 +10,17 @@ import type {
   GameStatus,
   SkillFolder
 } from "../../../shared/types.ts";
-import { formatSkillsIndexForPrompt } from "./skills.ts";
+import {
+  formatConsultedSkillsForPrompt,
+  formatSkillsIndexForPrompt
+} from "./skills.ts";
 
 export type BuildSystemPromptInput = {
   attributes?: GameAttributes;
   status?: GameStatus;
   skills?: AdventureSkill[];
   folders?: SkillFolder[];
+  consultedSkills?: AdventureSkill[];
   adventureSettings?: AdventureSettings;
 };
 
@@ -57,6 +62,7 @@ export function normalizeAdventureSettings(value: unknown): AdventureSettings {
       defaults.additionalMemories,
       12_000
     ),
+    skillsEnabled: value.skillsEnabled === false ? false : defaults.skillsEnabled,
     appearance: {
       theme: appearance.theme === "light" ? "light" : defaults.appearance.theme,
       ereaderTone: normalizeRuntimeNumber(
@@ -70,7 +76,21 @@ export function normalizeAdventureSettings(value: unknown): AdventureSettings {
         defaults.appearance.fontScale,
         70,
         140
-      )
+      ),
+      lineHeight: normalizeRuntimeNumber(
+        appearance.lineHeight,
+        defaults.appearance.lineHeight,
+        140,
+        220
+      ),
+      contentWidth: normalizeRuntimeNumber(
+        appearance.contentWidth,
+        defaults.appearance.contentWidth,
+        48,
+        84
+      ),
+      typeface: appearance.typeface === "sans" ? "sans" : defaults.appearance.typeface,
+      reducedMotion: appearance.reducedMotion === true
     },
     selectedModel: resolveOpenRouterModel(
       normalizeText(value.selectedModel, defaults.selectedModel, 120)
@@ -136,14 +156,29 @@ function formatLocation(status?: GameStatus) {
   return ["# LOCALIZACAO", status.location.trim()].join("\n");
 }
 
+const DEFAULT_NARRATOR_PROMPT = [
+  "Es o narrador de uma aventura de texto interativa em portugues.",
+  "Responde em segunda pessoa, descrevendo o mundo e reagindo as acoes do jogador.",
+  "Quando o jogador pergunta por factos (idade, nome, local, lore), responde com base nos factos relevantes.",
+  "Em perguntas directas e simples (ex.: 'onde estou?', 'como me chamo?'), responde com uma ou duas frases curtas.",
+  "Responde APENAS com texto de narracao. Nunca repitas instrucoes, titulos de skills, metadata, nem a acao do jogador.",
+  "Nao quebres a quarta parede nem digas que nao sabes por seres uma IA."
+].join(" ");
+
 export function buildSystemPrompt(input: BuildSystemPromptInput) {
   const settings = normalizeAdventureSettings(input.adventureSettings);
+  const skillsEnabled = isSkillsEnabled(settings);
   const sections = [
-    settings.prompt.trim(),
+    settings.prompt.trim() || DEFAULT_NARRATOR_PROMPT,
     formatStats(input.attributes),
     formatItems(input.status),
     formatLocation(input.status),
-    formatSkillsIndexForPrompt(input.skills ?? [], input.folders ?? [])
+    ...(skillsEnabled
+      ? [
+          formatSkillsIndexForPrompt(input.skills ?? [], input.folders ?? []),
+          formatConsultedSkillsForPrompt(input.consultedSkills ?? [])
+        ]
+      : [])
   ].filter((section) => section.trim().length > 0);
 
   return sections.join("\n\n");
@@ -159,10 +194,13 @@ export function buildSummaryPrompt(
   skills: AdventureSkill[] = [],
   folders: SkillFolder[] = []
 ) {
+  const normalized = normalizeAdventureSettings(settings);
   const sections = [
-    settings.prompt.trim(),
+    normalized.prompt.trim(),
     `Resume o final da sessao de forma breve. Causa: ${cause}.`,
-    formatSkillsIndexForPrompt(skills, folders)
+    ...(isSkillsEnabled(normalized)
+      ? [formatSkillsIndexForPrompt(skills, folders)]
+      : [])
   ].filter((section) => section.trim().length > 0);
 
   return sections.join("\n\n");

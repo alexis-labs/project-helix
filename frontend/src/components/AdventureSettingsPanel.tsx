@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -16,9 +16,11 @@ import {
 } from "lucide-react";
 import { OPENROUTER_MODELS } from "../../../shared/adventureSettings";
 import { uiText } from "../content/uiText";
-import { cloneSkills } from "../game/adventureSkills";
+import { cloneSkills, finalizeSkillsState } from "../game/adventureSkills";
+import { AppearancePreview } from "./AppearancePreview";
 import { EreaderToneSlider } from "./EreaderToneSlider";
 import { FontSizeSlider } from "./FontSizeSlider";
+import { SettingsRangeSlider } from "./SettingsRangeSlider";
 import { SkillsWorkbench } from "./skills/SkillsWorkbench";
 import type {
   AdventureSettings,
@@ -50,6 +52,7 @@ type AdventureSettingsPanelProps = {
   ) => void;
   onClose: () => void;
   onInventoryChange: (inventory: string[]) => void;
+  onPreviewAppearance: (appearance: AdventureSettings["appearance"]) => void;
   onSectionChange: (section: SettingsSection) => void;
 };
 
@@ -185,6 +188,7 @@ export function AdventureSettingsPanel({
   onApplyChanges,
   onClose,
   onInventoryChange,
+  onPreviewAppearance,
   onSectionChange
 }: AdventureSettingsPanelProps) {
   const activeTab =
@@ -241,6 +245,30 @@ export function AdventureSettingsPanel({
     return () => window.clearTimeout(timeoutId);
   }, [applyStatus]);
 
+  const committedAppearanceRef = useRef(adventureSettings.appearance);
+  committedAppearanceRef.current = adventureSettings.appearance;
+
+  useEffect(() => {
+    if (activeSection === "appearance") {
+      onPreviewAppearance(draftSettings.appearance);
+      return;
+    }
+
+    onPreviewAppearance(adventureSettings.appearance);
+  }, [
+    activeSection,
+    adventureSettings.appearance,
+    draftSettings.appearance,
+    onPreviewAppearance
+  ]);
+
+  useEffect(
+    () => () => {
+      onPreviewAppearance(committedAppearanceRef.current);
+    },
+    [onPreviewAppearance]
+  );
+
   function updatePrompt(prompt: string) {
     setApplyStatus("dirty");
     setDraftSettings({
@@ -284,6 +312,14 @@ export function AdventureSettingsPanel({
     setDraftSettings({
       ...draftSettings,
       appearance
+    });
+  }
+
+  function updateSkillsEnabled(skillsEnabled: boolean) {
+    setApplyStatus("dirty");
+    setDraftSettings({
+      ...draftSettings,
+      skillsEnabled
     });
   }
 
@@ -347,7 +383,12 @@ export function AdventureSettingsPanel({
 
   function applyDrafts() {
     try {
-      onApplyChanges(draftSettings, draftAttributes, draftStatus, draftSkills);
+      onApplyChanges(
+        draftSettings,
+        draftAttributes,
+        draftStatus,
+        finalizeSkillsState(draftSkills)
+      );
       setApplyStatus("success");
     } catch {
       setApplyStatus("error");
@@ -380,14 +421,27 @@ export function AdventureSettingsPanel({
             </span>
             <span>{activeTab.label}</span>
           </h2>
-          <button
-            aria-label="Fechar definicoes"
-            className="settings-close-button"
-            onClick={onClose}
-            type="button"
-          >
-            <X size={16} strokeWidth={1.8} aria-hidden="true" />
-          </button>
+          <div className="settings-view-header-actions">
+            <button
+              className={[
+                "settings-apply-button",
+                `is-${visibleApplyStatus}`
+              ].join(" ")}
+              onClick={applyDrafts}
+              type="button"
+            >
+              <ApplyIcon size={15} strokeWidth={1.8} aria-hidden="true" />
+              <span>{applyLabel}</span>
+            </button>
+            <button
+              aria-label="Fechar definicoes"
+              className="settings-close-button"
+              onClick={onClose}
+              type="button"
+            >
+              <X size={16} strokeWidth={1.8} aria-hidden="true" />
+            </button>
+          </div>
         </header>
 
         <nav className="settings-view-tabs" aria-label="Secoes das definicoes">
@@ -418,20 +472,11 @@ export function AdventureSettingsPanel({
       </div>
 
       <div className="settings-view-body">
-        <button
-          className={[
-            "settings-apply-button",
-            `is-${visibleApplyStatus}`
-          ].join(" ")}
-          onClick={applyDrafts}
-          type="button"
-        >
-          <ApplyIcon size={15} strokeWidth={1.8} aria-hidden="true" />
-          <span>{applyLabel}</span>
-        </button>
-
         {activeSection === "prompt" ? (
-          <section className="settings-section" aria-label="Prompt">
+          <section
+            className="settings-section settings-section--fill"
+            aria-label="Prompt"
+          >
             <div className="settings-panel-card settings-prompt-editor">
               <p className="settings-panel-card-hint">
                 Instrucoes de sistema enviadas ao modelo no inicio de cada turno.
@@ -458,7 +503,10 @@ export function AdventureSettingsPanel({
         ) : null}
 
         {activeSection === "stats" ? (
-          <section className="settings-section" aria-label="Stats">
+          <section
+            className="settings-section settings-section--fill"
+            aria-label="Stats"
+          >
             <p className="settings-section-lead">
               Valores de 0 a 100. Sao enviados ao modelo como estado atual do
               personagem.
@@ -620,12 +668,17 @@ export function AdventureSettingsPanel({
           <SkillsWorkbench
             draftSkills={draftSkills}
             onDraftChange={updateDraftSkills}
+            onSkillsEnabledChange={updateSkillsEnabled}
+            skillsEnabled={draftSettings.skillsEnabled}
             theme={draftSettings.appearance.theme}
           />
         ) : null}
 
         {activeSection === "models" ? (
-          <section className="settings-section" aria-label="AI Models">
+          <section
+            className="settings-section settings-section--fill settings-section--models"
+            aria-label="AI Models"
+          >
             <div className="settings-panel-card settings-model-config">
               <h3 className="settings-panel-card-title">Parametros de geracao</h3>
               <p className="settings-panel-card-hint">
@@ -719,84 +772,203 @@ export function AdventureSettingsPanel({
         ) : null}
 
         {activeSection === "appearance" ? (
-          <section className="settings-section" aria-label="Appearance">
-            <div className="settings-panel-card">
-              <h3 className="settings-panel-card-title">Tema</h3>
-              <p className="settings-panel-card-hint">
-                Escolhe o contraste base da interface.
-              </p>
-              <div
-                className="settings-theme-picker"
-                role="radiogroup"
-                aria-label="Tema da interface"
-              >
-                <label
-                  className={[
-                    "settings-theme-option",
-                    draftSettings.appearance.theme === "dark" ? "is-selected" : ""
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                >
+          <section
+            className="settings-section settings-section--fill settings-section--appearance"
+            aria-label="Appearance"
+          >
+            <div className="settings-appearance-layout settings-appearance-compact">
+              <div className="settings-appearance-controls">
+                <div className="settings-appearance-choices">
+                  <div className="settings-appearance-group">
+                    <span className="settings-appearance-group-label">Tema</span>
+                    <div
+                      className="settings-theme-picker"
+                      role="radiogroup"
+                      aria-label="Tema da interface"
+                    >
+                  <label
+                    className={[
+                      "settings-theme-option",
+                      draftSettings.appearance.theme === "dark" ? "is-selected" : ""
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    <input
+                      checked={draftSettings.appearance.theme === "dark"}
+                      name="appearance-theme"
+                      onChange={handleThemeChange}
+                      type="radio"
+                      value="dark"
+                    />
+                    <span
+                      aria-hidden="true"
+                      className="settings-theme-swatch settings-theme-swatch--dark"
+                    />
+                    <span className="settings-theme-option-label">Escuro</span>
+                  </label>
+                  <label
+                    className={[
+                      "settings-theme-option",
+                      draftSettings.appearance.theme === "light" ? "is-selected" : ""
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    <input
+                      checked={draftSettings.appearance.theme === "light"}
+                      name="appearance-theme"
+                      onChange={handleThemeChange}
+                      type="radio"
+                      value="light"
+                    />
+                    <span
+                      aria-hidden="true"
+                      className="settings-theme-swatch settings-theme-swatch--light"
+                    />
+                    <span className="settings-theme-option-label">Claro</span>
+                  </label>
+                    </div>
+                  </div>
+
+                  <div className="settings-appearance-group">
+                    <span className="settings-appearance-group-label">Letra</span>
+                    <div
+                      className="settings-theme-picker settings-typeface-picker"
+                      role="radiogroup"
+                      aria-label="Tipo de letra da narracao"
+                    >
+                  {(
+                    [
+                      {
+                        id: "serif" as const,
+                        label: uiText.typefaceSerifLabel,
+                        hint: uiText.typefaceSerifHint,
+                        className: "settings-typeface-swatch--serif"
+                      },
+                      {
+                        id: "sans" as const,
+                        label: uiText.typefaceSansLabel,
+                        hint: uiText.typefaceSansHint,
+                        className: "settings-typeface-swatch--sans"
+                      }
+                    ] as const
+                  ).map((option) => (
+                    <label
+                      className={[
+                        "settings-theme-option settings-typeface-option",
+                        draftSettings.appearance.typeface === option.id
+                          ? "is-selected"
+                          : ""
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      key={option.id}
+                    >
+                      <input
+                        checked={draftSettings.appearance.typeface === option.id}
+                        name="appearance-typeface"
+                        onChange={() =>
+                          updateAppearance({
+                            ...draftSettings.appearance,
+                            typeface: option.id
+                          })
+                        }
+                        type="radio"
+                        value={option.id}
+                      />
+                      <span
+                        aria-hidden="true"
+                        className={[
+                          "settings-typeface-swatch",
+                          option.className
+                        ].join(" ")}
+                      >
+                        Aa
+                      </span>
+                      <span className="settings-theme-option-label">
+                        {option.label}
+                      </span>
+                    </label>
+                  ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="settings-appearance-sliders-grid">
+                  <EreaderToneSlider
+                    onChange={(value) => {
+                      updateAppearance({
+                        ...draftSettings.appearance,
+                        ereaderTone: value
+                      });
+                    }}
+                    value={draftSettings.appearance.ereaderTone}
+                  />
+                  <FontSizeSlider
+                    onChange={(value) => {
+                      updateAppearance({
+                        ...draftSettings.appearance,
+                        fontScale: value
+                      });
+                    }}
+                    value={draftSettings.appearance.fontScale}
+                  />
+                  <SettingsRangeSlider
+                    ariaLabel={uiText.lineHeightAriaLabel}
+                    id="appearance-line-height"
+                    label={uiText.lineHeightLabel}
+                    max={220}
+                    min={140}
+                    maxHint={uiText.lineHeightMaxHint}
+                    minHint={uiText.lineHeightMinHint}
+                    onChange={(value) => {
+                      updateAppearance({
+                        ...draftSettings.appearance,
+                        lineHeight: value
+                      });
+                    }}
+                    step={5}
+                    value={draftSettings.appearance.lineHeight}
+                    valueText={`${(draftSettings.appearance.lineHeight / 100).toFixed(2)}`}
+                  />
+                  <SettingsRangeSlider
+                    ariaLabel={uiText.contentWidthAriaLabel}
+                    id="appearance-content-width"
+                    label={uiText.contentWidthLabel}
+                    max={84}
+                    min={48}
+                    maxHint={uiText.contentWidthMaxHint}
+                    minHint={uiText.contentWidthMinHint}
+                    onChange={(value) => {
+                      updateAppearance({
+                        ...draftSettings.appearance,
+                        contentWidth: value
+                      });
+                    }}
+                    step={2}
+                    value={draftSettings.appearance.contentWidth}
+                    valueText={`${draftSettings.appearance.contentWidth} ch`}
+                  />
+                </div>
+
+                <label className="settings-check settings-check--inline">
                   <input
-                    checked={draftSettings.appearance.theme === "dark"}
-                    name="appearance-theme"
-                    onChange={handleThemeChange}
-                    type="radio"
-                    value="dark"
+                    checked={draftSettings.appearance.reducedMotion}
+                    onChange={(event) =>
+                      updateAppearance({
+                        ...draftSettings.appearance,
+                        reducedMotion: event.target.checked
+                      })
+                    }
+                    type="checkbox"
                   />
-                  <span
-                    aria-hidden="true"
-                    className="settings-theme-swatch settings-theme-swatch--dark"
-                  />
-                  <span className="settings-theme-option-label">Escuro</span>
-                </label>
-                <label
-                  className={[
-                    "settings-theme-option",
-                    draftSettings.appearance.theme === "light" ? "is-selected" : ""
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                >
-                  <input
-                    checked={draftSettings.appearance.theme === "light"}
-                    name="appearance-theme"
-                    onChange={handleThemeChange}
-                    type="radio"
-                    value="light"
-                  />
-                  <span
-                    aria-hidden="true"
-                    className="settings-theme-swatch settings-theme-swatch--light"
-                  />
-                  <span className="settings-theme-option-label">Claro</span>
+                  <span>{uiText.reducedMotionLabel}</span>
                 </label>
               </div>
-            </div>
 
-            <div className="settings-panel-card settings-appearance-sliders">
-              <h3 className="settings-panel-card-title">Leitura e conforto</h3>
-              <p className="settings-panel-card-hint">
-                Ajusta luminosidade e tamanho do texto na area de jogo.
-              </p>
-              <EreaderToneSlider
-                onChange={(value) => {
-                  updateAppearance({
-                    ...draftSettings.appearance,
-                    ereaderTone: value
-                  });
-                }}
-                value={draftSettings.appearance.ereaderTone}
-              />
-              <FontSizeSlider
-                onChange={(value) => {
-                  updateAppearance({
-                    ...draftSettings.appearance,
-                    fontScale: value
-                  });
-                }}
-                value={draftSettings.appearance.fontScale}
+              <AppearancePreview
+                contentWidth={draftSettings.appearance.contentWidth}
               />
             </div>
           </section>

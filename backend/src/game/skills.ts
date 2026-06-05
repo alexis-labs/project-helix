@@ -10,6 +10,100 @@ const MAX_DESCRIPTION_LENGTH = 240;
 const MAX_CONTENT_LENGTH = 2000;
 const MAX_FOLDER_NAME_LENGTH = 80;
 const MAX_SEARCH_RESULTS = 5;
+const MAX_AUTO_CONSULT_RESULTS = 8;
+
+const SEARCH_STOP_WORDS = new Set([
+  "o",
+  "a",
+  "os",
+  "as",
+  "de",
+  "do",
+  "da",
+  "dos",
+  "das",
+  "em",
+  "no",
+  "na",
+  "nos",
+  "nas",
+  "um",
+  "uma",
+  "uns",
+  "umas",
+  "e",
+  "ou",
+  "que",
+  "com",
+  "por",
+  "para",
+  "se",
+  "eu",
+  "tu",
+  "ele",
+  "ela",
+  "nos",
+  "vos",
+  "me",
+  "te",
+  "lhe",
+  "the",
+  "is",
+  "are",
+  "was",
+  "were",
+  "i",
+  "you",
+  "he",
+  "she",
+  "it",
+  "they",
+  "we",
+  "my",
+  "your",
+  "his",
+  "her",
+  "qual",
+  "quem",
+  "onde",
+  "como",
+  "quando",
+  "porque",
+  "muito",
+  "pouco",
+  "mais",
+  "menos",
+  "bem",
+  "mal",
+  "sim",
+  "nao",
+  "tem",
+  "tinha",
+  "ser",
+  "esta",
+  "estou",
+  "estas",
+  "fui",
+  "foi",
+  "sao"
+]);
+
+const AUTO_CONSULT_EXCLUDED_SKILL_IDS = new Set(["ultima_acao"]);
+
+const FOLDER_TOPIC_KEYWORDS: Record<string, string[]> = {
+  personagens: [
+    "personagem",
+    "personagens",
+    "npc",
+    "protagonista",
+    "heroi",
+    "heroina",
+    "nome",
+    "idade",
+    "anos"
+  ],
+  locais: ["local", "locais", "lugar", "lugares", "cidade", "sala", "zona", "onde"]
+};
 
 export const SKILL_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
@@ -27,8 +121,7 @@ export const SKILL_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
               "Termos de pesquisa (ex: nome de personagem, local, tema)."
           }
         },
-        required: ["query"],
-        additionalProperties: false
+        required: ["query"]
       }
     }
   },
@@ -62,8 +155,7 @@ export const SKILL_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
             description: "Conhecimento completo da skill."
           }
         },
-        required: ["title", "description", "content"],
-        additionalProperties: false
+        required: ["title", "description", "content"]
       }
     }
   }
@@ -242,46 +334,215 @@ function normalizeSearchText(value: string) {
     .toLowerCase();
 }
 
-export function searchSkills(skills: AdventureSkill[], query: string): AdventureSkill[] {
-  const tokens = normalizeSearchText(query)
-    .split(/\s+/)
+function extractSearchTokens(query: string) {
+  return normalizeSearchText(query)
+    .split(/[^a-z0-9]+/)
     .map((token) => token.trim())
+    .filter((token) => token.length > 0 && !SEARCH_STOP_WORDS.has(token))
     .filter((token) => token.length >= 2);
+}
+
+type SearchSkillsOptions = {
+  maxResults?: number;
+  includeContent?: boolean;
+  folders?: SkillFolder[];
+};
+
+function scoreSkillMatch(
+  skill: AdventureSkill,
+  tokens: string[],
+  folders: SkillFolder[],
+  includeContent: boolean
+) {
+  const folderName =
+    skill.folderId && folders.length > 0
+      ? normalizeSearchText(
+          folders.find((folder) => folder.id === skill.folderId)?.name ?? ""
+        )
+      : "";
+
+  const id = normalizeSearchText(skill.id);
+  const title = normalizeSearchText(skill.title);
+  const description = normalizeSearchText(skill.description);
+  const content = includeContent ? normalizeSearchText(skill.content) : "";
+  const haystack = `${id} ${title} ${description} ${content} ${folderName}`;
+
+  return tokens.reduce((total, token) => {
+    let next = total;
+
+    if (id.includes(token)) {
+      next += 4;
+    }
+
+    if (title.includes(token)) {
+      next += 3;
+    }
+
+    if (description.includes(token)) {
+      next += 2;
+    }
+
+    if (folderName.includes(token)) {
+      next += 2;
+    }
+
+    if (content.includes(token)) {
+      next += 1;
+    }
+
+    if (haystack.includes(token)) {
+      next += 1;
+    }
+
+    return next;
+  }, 0);
+}
+
+export function searchSkills(
+  skills: AdventureSkill[],
+  query: string,
+  options: SearchSkillsOptions = {}
+): AdventureSkill[] {
+  const {
+    maxResults = MAX_SEARCH_RESULTS,
+    includeContent = true,
+    folders = []
+  } = options;
+  const tokens = extractSearchTokens(query);
 
   if (tokens.length === 0) {
     return [];
   }
 
   return skills
-    .map((skill) => {
-      const title = normalizeSearchText(skill.title);
-      const description = normalizeSearchText(skill.description);
-      const id = normalizeSearchText(skill.id);
-
-      const score = tokens.reduce((total, token) => {
-        let next = total;
-
-        if (id.includes(token)) {
-          next += 3;
-        }
-
-        if (title.includes(token)) {
-          next += 2;
-        }
-
-        if (description.includes(token)) {
-          next += 1;
-        }
-
-        return next;
-      }, 0);
-
-      return { skill, score };
-    })
+    .map((skill) => ({
+      skill,
+      score: scoreSkillMatch(skill, tokens, folders, includeContent)
+    }))
     .filter(({ score }) => score > 0)
     .sort((left, right) => right.score - left.score)
-    .slice(0, MAX_SEARCH_RESULTS)
+    .slice(0, maxResults)
     .map(({ skill }) => skill);
+}
+
+function isAutoConsultCandidate(skill: AdventureSkill) {
+  return !AUTO_CONSULT_EXCLUDED_SKILL_IDS.has(skill.id);
+}
+
+function filterAutoConsultCandidates(skills: AdventureSkill[]) {
+  return skills.filter(isAutoConsultCandidate);
+}
+
+function appendUniqueSkills(
+  results: AdventureSkill[],
+  seen: Set<string>,
+  candidates: AdventureSkill[],
+  maxResults: number
+) {
+  for (const skill of candidates) {
+    if (!isAutoConsultCandidate(skill) || seen.has(skill.id) || results.length >= maxResults) {
+      continue;
+    }
+
+    seen.add(skill.id);
+    results.push(skill);
+  }
+}
+
+function findExplicitlyMentionedSkills(skills: AdventureSkill[], text: string) {
+  const haystack = ` ${normalizeSearchText(text)} `;
+
+  return filterAutoConsultCandidates(skills).filter((skill) => {
+    const id = normalizeSearchText(skill.id);
+    const title = normalizeSearchText(skill.title);
+    const idSpaced = id.replace(/_/g, " ");
+
+    return (
+      haystack.includes(` ${id} `) ||
+      haystack.includes(` ${idSpaced} `) ||
+      haystack.includes(` ${title} `)
+    );
+  });
+}
+
+export function autoConsultSkillsForTurn(
+  skills: AdventureSkill[],
+  folders: SkillFolder[],
+  message: string,
+  recentContext = ""
+): AdventureSkill[] {
+  const candidates = filterAutoConsultCandidates(skills);
+
+  if (candidates.length === 0) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const results: AdventureSkill[] = [];
+  const combinedText = `${message} ${recentContext}`.trim();
+
+  appendUniqueSkills(
+    results,
+    seen,
+    findExplicitlyMentionedSkills(candidates, combinedText),
+    MAX_AUTO_CONSULT_RESULTS
+  );
+
+  const queries = [message.trim(), recentContext.trim()].filter((query) => query.length > 0);
+
+  for (const query of queries) {
+    appendUniqueSkills(
+      results,
+      seen,
+      searchSkills(candidates, query, {
+        folders,
+        maxResults: MAX_AUTO_CONSULT_RESULTS,
+        includeContent: true
+      }),
+      MAX_AUTO_CONSULT_RESULTS
+    );
+  }
+
+  const combined = normalizeSearchText(combinedText);
+
+  for (const [folderId, keywords] of Object.entries(FOLDER_TOPIC_KEYWORDS)) {
+    if (!keywords.some((keyword) => combined.includes(keyword))) {
+      continue;
+    }
+
+    appendUniqueSkills(
+      results,
+      seen,
+      candidates.filter((skill) => skill.folderId === folderId),
+      MAX_AUTO_CONSULT_RESULTS
+    );
+  }
+
+  return results;
+}
+
+export function buildPlayerMessageWithSkillContext(
+  message: string,
+  _consultedSkills: AdventureSkill[] = []
+) {
+  return message;
+}
+
+function formatSkillFactsForPrompt(skills: AdventureSkill[]): string {
+  return skills
+    .map((skill) => `- ${skill.title}: ${skill.content.replace(/\n+/g, "; ")}`)
+    .join("\n");
+}
+
+export function formatConsultedSkillsForPrompt(skills: AdventureSkill[]): string {
+  if (skills.length === 0) {
+    return "";
+  }
+
+  return [
+    "# FACTOS RELEVANTES (uso interno — nunca incluir na resposta)",
+    formatSkillFactsForPrompt(skills)
+  ].join("\n");
 }
 
 export function formatSkillSearchResults(skills: AdventureSkill[]): string {
@@ -383,7 +644,11 @@ export function upsertSkill(
   return { skills: [...skills, skill], skill };
 }
 
-export function executeConsultSkill(skills: AdventureSkill[], args: unknown) {
+export function executeConsultSkill(
+  skills: AdventureSkill[],
+  args: unknown,
+  folders: SkillFolder[] = []
+) {
   const query =
     args && typeof args === "object" && "query" in args && typeof args.query === "string"
       ? args.query.trim()
@@ -393,7 +658,9 @@ export function executeConsultSkill(skills: AdventureSkill[], args: unknown) {
     return "Consulta vazia. Indica titulo, personagem ou tema a pesquisar.";
   }
 
-  return formatSkillSearchResults(searchSkills(skills, query));
+  return formatSkillSearchResults(
+    searchSkills(skills, query, { folders, includeContent: true })
+  );
 }
 
 export function executeSaveSkill(
@@ -417,6 +684,66 @@ export function executeSaveSkill(
     "folderId" in args && typeof args.folderId === "string" ? args.folderId : null;
 
   return upsertSkill(skills, { id, folderId, title, description, content }, folders);
+}
+
+const DEFAULT_TEMPLATE_FOLDERS: SkillFolder[] = [
+  { id: "personagens", name: "Personagens", parentId: null },
+  { id: "locais", name: "Locais", parentId: null }
+];
+
+const DEFAULT_TEMPLATE_SKILLS: AdventureSkill[] = [
+  {
+    id: "protagonista",
+    folderId: "personagens",
+    title: "Protagonista",
+    description: "Personagem principal controlado pelo jogador",
+    content: [
+      "Nome: Jack",
+      "Idade: 14 anos",
+      "Profissao: Estudante",
+      "Personalidade: Curioso e corajoso",
+      "Motivacoes: Descobrir a verdade sobre seu passado",
+      "Relacoes importantes: Mestre de magia, melhor amigo"
+    ].join("\n"),
+    source: "externo"
+  },
+  {
+    id: "local_atual",
+    folderId: "locais",
+    title: "Local atual",
+    description: "Onde a cena se passa neste momento",
+    content: [
+      "Nome do local:",
+      "Atmosfera:",
+      "Detalhes sensoriais:",
+      "Perigos ou pistas:"
+    ].join("\n"),
+    source: "externo"
+  }
+];
+
+export function mergeDefaultSkillTemplates(
+  skills: AdventureSkill[],
+  folders: SkillFolder[]
+): { skills: AdventureSkill[]; folders: SkillFolder[] } {
+  const folderIds = new Set(folders.map((folder) => folder.id));
+  const skillIds = new Set(skills.map((skill) => skill.id));
+  const mergedFolders = [...folders];
+  const mergedSkills = [...skills];
+
+  for (const folder of DEFAULT_TEMPLATE_FOLDERS) {
+    if (!folderIds.has(folder.id)) {
+      mergedFolders.push(folder);
+    }
+  }
+
+  for (const skill of DEFAULT_TEMPLATE_SKILLS) {
+    if (!skillIds.has(skill.id)) {
+      mergedSkills.push(skill);
+    }
+  }
+
+  return { skills: mergedSkills, folders: mergedFolders };
 }
 
 function isSkillSource(value: unknown): value is SkillSource {

@@ -218,6 +218,7 @@ function normalizeAdventureSettings(value: unknown): AdventureSettings {
       defaults.additionalMemories,
       12_000
     ),
+    skillsEnabled: value.skillsEnabled === false ? false : defaults.skillsEnabled,
     appearance: {
       theme: appearance.theme === "light" ? "light" : defaults.appearance.theme,
       ereaderTone: normalizeNumber(
@@ -231,7 +232,21 @@ function normalizeAdventureSettings(value: unknown): AdventureSettings {
         defaults.appearance.fontScale,
         70,
         140
-      )
+      ),
+      lineHeight: normalizeNumber(
+        appearance.lineHeight,
+        defaults.appearance.lineHeight,
+        140,
+        220
+      ),
+      contentWidth: normalizeNumber(
+        appearance.contentWidth,
+        defaults.appearance.contentWidth,
+        48,
+        84
+      ),
+      typeface: appearance.typeface === "sans" ? "sans" : defaults.appearance.typeface,
+      reducedMotion: appearance.reducedMotion === true
     },
     selectedModel: resolveOpenRouterModel(
       normalizeText(value.selectedModel, defaults.selectedModel, 120)

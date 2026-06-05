@@ -31,26 +31,12 @@ export function createTemplateSkills(): AdventureSkills {
       title: "Protagonista",
       description: "Personagem principal controlado pelo jogador",
       content: [
-        "Nome:",
-        "Idade:",
-        "Profissao:",
-        "Personalidade:",
-        "Motivacoes:",
-        "Relacoes importantes:"
-      ].join("\n"),
-      source: "externo"
-    },
-    {
-      id: "npc_exemplo",
-      folderId: "personagens",
-      title: "NPC exemplo",
-      description: "Personagem secundario da historia",
-      content: [
-        "Nome:",
-        "Idade:",
-        "Papel na historia:",
-        "Personalidade:",
-        "O que sabe:"
+        "Nome: Jack",
+        "Idade: 14 anos",
+        "Profissao: Estudante",
+        "Personalidade: Curioso e corajoso",
+        "Motivacoes: Descobrir a verdade sobre seu passado",
+        "Relacoes importantes: Mestre de magia, melhor amigo"
       ].join("\n"),
       source: "externo"
     },
@@ -64,19 +50,6 @@ export function createTemplateSkills(): AdventureSkills {
         "Atmosfera:",
         "Detalhes sensoriais:",
         "Perigos ou pistas:"
-      ].join("\n"),
-      source: "externo"
-    },
-    {
-      id: "local_conhecido",
-      folderId: "locais",
-      title: "Local conhecido",
-      description: "Local importante da aventura",
-      content: [
-        "Nome:",
-        "Historia do local:",
-        "Quem frequenta:",
-        "Segredos ou lore:"
       ].join("\n"),
       source: "externo"
     }
@@ -94,15 +67,31 @@ export function createInitialSkills(): AdventureSkills {
 
 export function ensureDefaultSkillLibrary(state: AdventureSkills): AdventureSkills {
   const migrated = migrateSkillsToV7(state);
+  const template = createTemplateSkills();
+  let next: AdventureSkills = {
+    folders: { ...migrated.folders },
+    skills: { ...migrated.skills }
+  };
 
-  if (
-    Object.keys(migrated.folders).length > 0 ||
-    Object.keys(migrated.skills).length > 0
-  ) {
-    return migrated;
+  for (const [id, folder] of Object.entries(template.folders)) {
+    if (!next.folders[id]) {
+      next = {
+        ...next,
+        folders: {
+          ...next.folders,
+          [id]: folder
+        }
+      };
+    }
   }
 
-  return createTemplateSkills();
+  for (const [id, skill] of Object.entries(template.skills)) {
+    if (!next.skills[id]) {
+      next = upsertSkillInState(next, skill);
+    }
+  }
+
+  return next;
 }
 
 export function indexSkills(
@@ -182,6 +171,27 @@ export function upsertSkillInState(
       ...state.skills,
       [normalized.id]: normalized
     }
+  };
+}
+
+export function finalizeSkillFields(skill: AdventureSkill): AdventureSkill {
+  return {
+    ...ensureSkillHasFolderId(skill),
+    title: skill.title.trim().slice(0, 80),
+    description: skill.description.trim().slice(0, 240),
+    content: skill.content.trim().slice(0, 2000)
+  };
+}
+
+export function finalizeSkillsState(state: AdventureSkills): AdventureSkills {
+  return {
+    folders: state.folders,
+    skills: Object.fromEntries(
+      Object.entries(state.skills).map(([id, skill]) => [
+        id,
+        finalizeSkillFields(skill)
+      ])
+    )
   };
 }
 
