@@ -54,27 +54,6 @@ export const OPENROUTER_MODELS = [
     description: "Equilibrado, rápido e bom para narração curta."
   },
   {
-    id: "openai/gpt-4.1-mini",
-    label: "GPT-4.1 Mini",
-    provider: "OpenAI",
-    contextWindowTokens: 1_000_000,
-    description: "Forte em coerência e seguimento de regras."
-  },
-  {
-    id: "google/gemini-3.5-flash",
-    label: "Gemini 3.5 Flash",
-    provider: "Google",
-    contextWindowTokens: 1_000_000,
-    description: "Rápido, com grande janela de contexto."
-  },
-  {
-    id: "deepseek/deepseek-chat",
-    label: "DeepSeek Chat",
-    provider: "DeepSeek",
-    contextWindowTokens: 64_000,
-    description: "Bom para progressão lógica e resposta direta."
-  },
-  {
     id: "nvidia/nemotron-3-ultra-550b-a55b:free",
     label: "Nemotron 3 Ultra Free",
     provider: "NVIDIA",
