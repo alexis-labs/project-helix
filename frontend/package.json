@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
-    "@vitejs/plugin-react": "^5.0.0",
+    "@vitejs/plugin-react": "^6.0.2",
     "esbuild": "npm:esbuild-wasm@^0.27.7",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
