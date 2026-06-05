@@ -46,6 +46,10 @@ import type {
   SidebarAction,
   Turn
 } from "../types";
+import {
+  AdventureSettingsPanel,
+  type SettingsSection
+} from "./AdventureSettingsPanel";
 import { CommandInput } from "./CommandInput";
 import { GameHeader } from "./GameHeader";
 import { GameOverPanel } from "./GameOverPanel";
@@ -183,6 +187,20 @@ function persistProgress(state: ActiveGameState) {
   saveGame(state);
 }
 
+type CenterPanel = "diary" | `settings-${SettingsSection}` | null;
+
+function toSettingsPanel(section: SettingsSection): CenterPanel {
+  return `settings-${section}`;
+}
+
+function getSettingsSection(panel: CenterPanel): SettingsSection | null {
+  if (!panel?.startsWith("settings-")) {
+    return null;
+  }
+
+  return panel.replace("settings-", "") as SettingsSection;
+}
+
 export function App() {
   const { isAmbientOn, toggleAmbient } = useAmbientAudio();
   const { tone: ereadTone, setTone: setEreadTone } = useEreaderTone();
@@ -204,7 +222,7 @@ export function App() {
   const [error, setError] = useState("");
   const [isHistoryOpen, setIsHistoryOpen] = useState(true);
   const [storySearchQuery, setStorySearchQuery] = useState("");
-  const [isDiaryOpen, setIsDiaryOpen] = useState(false);
+  const [activeCenterPanel, setActiveCenterPanel] = useState<CenterPanel>(null);
   const [attributes, setAttributes] = useState(createNewGameState().attributes);
   const [status, setStatus] = useState(createNewGameState().status);
   const [memory, setMemory] = useState<AdventureMemory>(createNewGameState().memory);
@@ -251,9 +269,12 @@ export function App() {
       id: "diary",
       label: uiText.diaryToggleLabel,
       icon: BookOpen,
-      isActive: isDiaryOpen,
-      isPressed: isDiaryOpen,
-      onClick: () => setIsDiaryOpen((current) => !current)
+      isActive: activeCenterPanel === "diary",
+      isPressed: activeCenterPanel === "diary",
+      onClick: () => {
+        setStorySearchQuery("");
+        setActiveCenterPanel((current) => (current === "diary" ? null : "diary"));
+      }
     },
     {
       id: "audio",
@@ -321,6 +342,7 @@ export function App() {
     [diaryEntries, storySearchQuery]
   );
   const isStorySearchActive = storySearchQuery.trim().length > 0;
+  const activeSettingsSection = getSettingsSection(activeCenterPanel);
 
   const currentAttributeChanges = useMemo(() => {
     const lastTurn = history.at(-1);
@@ -347,7 +369,7 @@ export function App() {
     setError("");
     setIsLoading(false);
     setGameOver(null);
-    setIsDiaryOpen(false);
+    setActiveCenterPanel(null);
   }
 
   function updateAdventureSettings(nextSettings: AdventureSettings) {
@@ -396,7 +418,12 @@ export function App() {
   function returnToMenu() {
     setScreen("menu");
     setGameOver(null);
-    setIsDiaryOpen(false);
+    setActiveCenterPanel(null);
+  }
+
+  function openSettingsPanel(section: SettingsSection) {
+    setStorySearchQuery("");
+    setActiveCenterPanel(toSettingsPanel(section));
   }
 
   function startNewGame() {
@@ -451,6 +478,8 @@ export function App() {
     setHistory(nextHistory);
     setMemory(nextMemory);
     setMessage("");
+    setStorySearchQuery("");
+    setActiveCenterPanel(null);
     setIsLoading(true);
     setError("");
 
@@ -596,21 +625,29 @@ export function App() {
       <section className="play-area" aria-label={uiText.mainAriaLabel}>
         <GameHeader />
         <StorySearchBar
-          onQueryChange={setStorySearchQuery}
+          onQueryChange={(query) => {
+            setStorySearchQuery(query);
+
+            if (query.trim()) {
+              setActiveCenterPanel(null);
+            }
+          }}
           query={storySearchQuery}
           resultCount={filteredDiaryEntries.length}
           totalEntries={diaryEntries.length}
         />
         <div className="play-main-panel">
           <div
-            aria-hidden={isDiaryOpen || isStorySearchActive}
+            aria-hidden={activeCenterPanel !== null || isStorySearchActive}
             className={[
               "play-story-stack",
-              isDiaryOpen || isStorySearchActive ? "is-view-hidden" : ""
+              activeCenterPanel !== null || isStorySearchActive
+                ? "is-view-hidden"
+                : ""
             ]
               .filter(Boolean)
               .join(" ")}
-            hidden={isDiaryOpen || isStorySearchActive}
+            hidden={activeCenterPanel !== null || isStorySearchActive}
           >
             <NarrationPanel
               attributeChanges={currentAttributeChanges}
@@ -627,10 +664,21 @@ export function App() {
               />
             ) : null}
           </div>
-          {isDiaryOpen ? (
-            <MemoryPanel memory={memory} />
-          ) : isStorySearchActive ? (
+          {isStorySearchActive ? (
             <StorySearchResults history={history} query={storySearchQuery} />
+          ) : activeCenterPanel === "diary" ? (
+            <MemoryPanel memory={memory} />
+          ) : activeSettingsSection ? (
+            <AdventureSettingsPanel
+              activeSection={activeSettingsSection}
+              adventureSettings={adventureSettings}
+              ereaderTone={ereadTone}
+              fontScale={fontScale}
+              onAdventureSettingsChange={updateAdventureSettings}
+              onAppearanceChange={updateAppearance}
+              onClose={() => setActiveCenterPanel(null)}
+              onSectionChange={openSettingsPanel}
+            />
           ) : null}
         </div>
         {!gameOver ? (
@@ -663,15 +711,12 @@ export function App() {
 
       <HistoryPanel
         actions={sidebarActions}
+        activeSettingsSection={activeSettingsSection}
         attributeChanges={currentAttributeChanges}
         attributes={attributes}
-        ereaderTone={ereadTone}
-        fontScale={fontScale}
         isOpen={isHistoryOpen}
-        adventureSettings={adventureSettings}
+        onOpenSettings={openSettingsPanel}
         onToggle={() => setIsHistoryOpen((current) => !current)}
-        onAdventureSettingsChange={updateAdventureSettings}
-        onAppearanceChange={updateAppearance}
         status={status}
       />
     </main>

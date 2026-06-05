@@ -68,25 +68,11 @@ export const OPENROUTER_MODELS = [
     description: "Rápido, com grande janela de contexto."
   },
   {
-    id: "qwen/qwen3.7-max",
-    label: "Qwen 3.7 Max",
-    provider: "Qwen",
-    contextWindowTokens: 262_000,
-    description: "Modelo amplo para cenas com muitos detalhes."
-  },
-  {
     id: "deepseek/deepseek-chat",
     label: "DeepSeek Chat",
     provider: "DeepSeek",
     contextWindowTokens: 64_000,
     description: "Bom para progressão lógica e resposta direta."
-  },
-  {
-    id: "anthropic/claude-opus-4.8",
-    label: "Claude Opus 4.8",
-    provider: "Anthropic",
-    contextWindowTokens: 200_000,
-    description: "Mais literário e cuidadoso em tensão psicológica."
   },
   {
     id: "nvidia/nemotron-3-ultra-550b-a55b:free",
