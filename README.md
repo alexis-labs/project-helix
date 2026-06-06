@@ -1,17 +1,33 @@
 # Blindfold
 
-Blindfold e um MVP web de terror psicologico interativo em texto.
+Blindfold é um jogo web de terror psicológico interativo em texto.
 
-O jogador acorda vendado numa casa abandonada. Nao ve nada. So pode perguntar, ouvir, tocar, chamar, seguir sons e tentar perceber onde esta. O narrador responde com texto curto, tenso e sensorial.
+O jogador acorda vendado numa casa abandonada. Não vê nada. Só pode perguntar, ouvir, tocar, chamar, seguir sons e tentar perceber onde está. O narrador responde com texto curto, tenso e sensorial.
 
 ## Estado do projeto
 
-MVP jogavel em browser.
+Jogo jogável em browser com sandbox narrativo, sistema de skills, persistência local e painel de debug LLM.
 
 - Frontend: React 19, Vite 7, TypeScript
 - Backend: Node.js 22, Express, TypeScript
-- LLM: OpenAI API via `.env`
-- Fallback local: permite testar o jogo sem chave de API
+- LLM: OpenAI SDK com OpenRouter por defeito (compatível com OpenAI, Groq e Gemini via `baseURL`)
+- Fallback local: resposta vazia quando não há chave de API — permite testar a UI sem custos
+
+### Funcionalidades
+
+| Área | O que faz |
+|------|-----------|
+| **Jogo** | Menu principal (novo / continuar), narração com typewriter, input de comandos, histórico de turnos |
+| **Atributos** | Medo, ferimentos, fome e exaustão (0–100); barras visuais, overlay de mudanças, game over ao atingir 100 |
+| **Skills / diário** | Árvore de pastas e skills editáveis; o LLM consulta e grava skills via ferramentas; painel in-game e workbench nas definições |
+| **Sandbox** | Painel de definições da aventura: prompt, stats, inventário, localização, skills, modelos AI e aparência |
+| **Aparência** | Tema claro/escuro, tom e-reader, escala de fonte, altura de linha, largura de conteúdo, tipo de letra, movimento reduzido |
+| **Áudio** | Ambiente sintético + loop opcional de BGM; toggle na barra lateral |
+| **Pesquisa** | Pesquisa no histórico de turnos (diário) com destaque de resultados |
+| **Contexto LLM** | Indicador de uso de contexto junto ao input; endpoint de health com estimativas |
+| **Debug LLM** | Painel expansível com modelo, mensagens e rondas de ferramentas por turno |
+| **Persistência** | Auto-gravação em `localStorage` (v7); continuar partida no menu |
+| **Game over** | Ecrã final com resumo narrativo via `/api/summary` (LLM ou fallback local) |
 
 ## Documentação
 
@@ -32,21 +48,27 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
-Depois abre o URL indicado pelo Vite, normalmente:
+Depois abre o URL indicado pelo Vite:
 
 ```txt
 http://localhost:5174
 ```
 
-Se a porta estiver ocupada, o Vite escolhe outra e mostra no terminal.
+A porta 5174 é fixa (`strictPort: true`). O Vite faz proxy de `/api` para o backend em `http://localhost:3011`.
+
+Para reiniciar ambos os serviços (Windows):
+
+```bash
+npm run restart:dev
+```
 
 ## Requisitos
 
 - Node.js 22 recomendado
 - npm
-- Chave OpenAI opcional para respostas LLM reais
+- Chave OpenRouter (ou outro provider compatível) opcional para respostas LLM reais
 
-## Instalacao
+## Instalação
 
 ```bash
 npm run install:all
@@ -62,7 +84,7 @@ cd ../frontend
 npm install
 ```
 
-## Configuracao
+## Configuração
 
 Backend:
 
@@ -73,16 +95,27 @@ cp .env.example .env
 Edita `.env`:
 
 ```txt
-OPENAI_BASE_URL=https://openrouter.ai/api/v1
-OPENAI_MODEL=mistralai/mistral-nemo
-OPENROUTER_API_KEY=
 PORT=3011
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
+OPENAI_MODEL=openrouter/free
+OPENROUTER_API_KEY=
 ```
 
 Cria uma chave em `https://openrouter.ai/keys` para testar via OpenRouter.
-Deixa `OPENAI_API_KEY` vazio para usar o fallback local durante desenvolvimento.
+Deixa a chave vazia para usar o fallback local (resposta vazia) durante desenvolvimento.
 
-Frontend, apenas se o backend nao estiver em `http://localhost:3011`:
+O ficheiro `.env.example` inclui exemplos comentados para OpenAI, Groq e Google Gemini. O código usa `OPENAI_BASE_URL` e a chave correspondente — `LLM_PROVIDER` é apenas documentação.
+
+Variáveis adicionais lidas pelo backend:
+
+```txt
+LLM_API_KEY=          # alternativa genérica à chave do provider
+OPENAI_API_KEY=       # fallback se OPENROUTER_API_KEY estiver vazio
+LLM_MAX_COMPLETION_TOKENS=1024
+LLM_CONTEXT_WINDOW=128000
+```
+
+Frontend, apenas se o backend não estiver em `http://localhost:3011`:
 
 ```bash
 cp frontend/.env.example frontend/.env
@@ -99,11 +132,12 @@ Na raiz do projeto:
 ```bash
 npm run install:all
 npm run build
-npm run dev:backend
-npm run dev:frontend
+npm run dev:backend      # porta 3011
+npm run dev:frontend     # porta 5174
+npm run restart:dev      # reinicia backend + frontend (PowerShell)
 ```
 
-Tambem podes correr scripts diretamente:
+Também podes correr scripts diretamente:
 
 ```bash
 npm --prefix backend run build
@@ -117,43 +151,69 @@ Ver [INDEX.md](INDEX.md) para o índice completo.
 ```txt
 .
 |-- shared
-|   |-- gameContent.ts
+|   |-- adventureSettings.ts
+|   |-- llmDebug.ts
+|   |-- narratorReply.ts
 |   `-- types.ts
 |-- backend
 |   `-- src
-|       |-- game
-|       |   |-- llmConfig.ts
-|       |   |-- prompt/
-|       |   |-- types.ts
-|       `-- server.ts
+|       |-- server.ts
+|       `-- game
+|           |-- gameState.ts
+|           |-- llmConfig.ts
+|           |-- llmDebug.ts
+|           |-- skills.ts
+|           |-- systemPrompt.ts
+|           |-- tokens.ts
+|           `-- types.ts
 |-- frontend
 |   `-- src
 |       |-- api
 |       |-- audio
 |       |-- components
 |       |-- content
+|       |-- game
+|       |-- hooks
 |       |-- main.tsx
 |       `-- styles.css
 |-- AGENTS.md
 |-- INDEX.md
-|-- CONTRIBUTING.md
-|-- CODE_OF_CONDUCT.md
-|-- SECURITY.md
 `-- README.md
 ```
 
 ## Onde editar
 
-- Configuracao LLM (modelo e tokens via OpenRouter): `backend/src/game/llmConfig.ts`
-- Prompt narrativo, regras, NPCs e formato de resposta: `backend/src/game/prompt/`
-- Conteudo inicial do jogo (atributos, inventario, memoria, objectivos): `shared/gameContent.ts`
+- Configuração LLM (modelo, tokens, provider): `backend/src/game/llmConfig.ts`
+- Prompt narrativo, regras e normalização de settings: `backend/src/game/systemPrompt.ts`
+- Ferramentas e lógica de skills no backend: `backend/src/game/skills.ts`
+- Modelos OpenRouter e defaults de aventura: `shared/adventureSettings.ts`
+- Estado inicial do jogo (atributos, skills): `frontend/src/game/initialState.ts` e `frontend/src/game/adventureSkills.ts`
+- Persistência local: `frontend/src/game/gameSave.ts`
 - Texto inicial e mensagens de estado: `frontend/src/content/story.ts`
 - Textos fixos da interface: `frontend/src/content/uiText.ts`
-- Chamada ao endpoint: `frontend/src/api/play.ts`
+- Chamadas à API: `frontend/src/api/`
 - Componentes da UI: `frontend/src/components/`
 - Estilos globais: `frontend/src/styles.css`
 
 ## API
+
+### `GET /api/health`
+
+Resposta:
+
+```json
+{
+  "ok": true,
+  "llm": {
+    "enabled": true,
+    "model": "mistralai/mistral-nemo",
+    "provider": "openrouter",
+    "contextWindowTokens": 128000,
+    "estimatedSystemPromptTokens": 0,
+    "availableModels": []
+  }
+}
+```
 
 ### `POST /api/play`
 
@@ -161,9 +221,20 @@ Pedido:
 
 ```json
 {
-  "message": "escuto atras da porta",
-  "history": [],
-  "memory": [],
+  "message": "escuto atrás da porta",
+  "history": [
+    { "role": "player", "content": "onde estou?" },
+    { "role": "narrator", "content": "..." }
+  ],
+  "adventureSettings": {
+    "prompt": "",
+    "skillsEnabled": true,
+    "selectedModel": "mistralai/mistral-nemo",
+    "appearance": { "theme": "dark" },
+    "llm": { "temperature": 0.85, "maxCompletionTokens": 1024, "contextWindowTokens": 128000 }
+  },
+  "skills": [],
+  "folders": [],
   "attributes": {
     "fear": 20,
     "injuries": 0,
@@ -173,7 +244,8 @@ Pedido:
   "status": {
     "location": "Abrigo da escola secundária",
     "inventory": ["Venda improvisada"]
-  }
+  },
+  "model": "mistralai/mistral-nemo"
 }
 ```
 
@@ -181,7 +253,41 @@ Resposta:
 
 ```json
 {
-  "reply": "Ouves madeira a ranger do outro lado. Algo respira devagar, muito perto da porta."
+  "reply": "Ouves madeira a ranger do outro lado. Algo respira devagar, muito perto da porta.",
+  "skillUpdates": [],
+  "usage": {
+    "promptTokens": 0,
+    "totalTokens": 0,
+    "contextLimit": 128000
+  },
+  "debug": {}
+}
+```
+
+Sem chave LLM: `{ "reply": "", "skillUpdates": [] }`.
+
+### `POST /api/summary`
+
+Pedido (game over):
+
+```json
+{
+  "cause": "fear",
+  "history": [],
+  "adventureSettings": {},
+  "skills": [],
+  "folders": [],
+  "model": "mistralai/mistral-nemo"
+}
+```
+
+`cause` aceita: `fear`, `injuries`, `hunger`, `exhaustion`.
+
+Resposta:
+
+```json
+{
+  "summary": "..."
 }
 ```
 
@@ -189,29 +295,31 @@ Resposta:
 
 Blindfold funciona melhor quando a escrita respeita estas regras:
 
-- O jogador nao consegue ver.
-- Nao descrevas imagens diretamente.
-- Usa som, cheiro, toque, temperatura, respiracao e sensacao espacial.
-- Mantem respostas curtas.
-- Nao expliques regras ao jogador.
-- Nao digas que o narrador e uma IA.
-- Cria tensao aos poucos.
-- Da sempre uma pista pequena para a proxima acao.
+- O jogador não consegue ver.
+- Não descrevas imagens diretamente.
+- Usa som, cheiro, toque, temperatura, respiração e sensação espacial.
+- Mantém respostas curtas.
+- Não expliques regras ao jogador.
+- Não digas que o narrador é uma IA.
+- Cria tensão aos poucos.
+- Dá sempre uma pista pequena para a próxima ação.
+
+O narrador pode incluir um bloco `ESTADO_UI:` no final da resposta; o frontend extrai atributos, inventário e localização desse bloco.
 
 ## Como contribuir
 
-Le [CONTRIBUTING.md](CONTRIBUTING.md).
+Lê [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Para contexto técnico e decisões de design, consulta [AGENTS.md](AGENTS.md).
 
-Contribuicoes bem-vindas:
+Contribuições bem-vindas:
 
-- Bugs pequenos e reproduziveis.
+- Bugs pequenos e reproduzíveis.
 - Melhorias de acessibilidade.
 - Beats narrativos sensoriais.
 - Polimento visual.
-- Documentacao para novos contribuidores.
-- Melhorias de prompts e fallback offline.
+- Documentação para novos contribuidores.
+- Melhorias de prompts, skills e fallback offline.
 
 Antes de abrir PR:
 
@@ -226,19 +334,18 @@ Este repo inclui:
 - Templates de bug, feature e story idea.
 - Template de pull request.
 - GitHub Actions para build de backend e frontend.
-- Dependabot semanal para dependencias npm.
-- Codigo de conduta, suporte e seguranca.
+- Dependabot semanal para dependências npm.
+- Código de conduta, suporte e segurança.
 
 ## Roadmap curto
 
-- Melhor persistencia de estado narrativo.
 - Mais respostas fallback sem LLM.
-- Modo de debug para comparar prompt, historico e resposta.
 - Testes automatizados para API e componentes principais.
-- Melhor experiencia mobile.
+- Melhor experiência mobile.
+- Sincronização de saves entre dispositivos (requer backend com base de dados).
 
-## Licenca
+## Licença
 
-Licenca ainda por definir.
+Licença ainda por definir.
 
-Antes de aceitar contribuicoes externas em escala, escolhe uma licenca open source e adiciona um ficheiro `LICENSE`.
+Antes de aceitar contribuições externas em escala, escolhe uma licença open source e adiciona um ficheiro `LICENSE`.
