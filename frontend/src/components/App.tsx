@@ -838,7 +838,7 @@ export function App() {
           />
         ) : (
           <>
-            <GameHeader />
+            <GameHeader theme={theme} />
             <StorySearchBar
               onQueryChange={(query) => {
                 setStorySearchQuery(query);
