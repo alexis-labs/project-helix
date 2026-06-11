@@ -1166,6 +1166,7 @@ button {
   max-width: 100%;
   padding: clamp(28px, 3.6vw, 48px);
   overflow: auto;
+  scroll-behavior: smooth;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
@@ -1182,6 +1183,28 @@ button {
   margin-bottom: clamp(18px, 2.6vh, 28px);
   padding-bottom: clamp(18px, 2.6vh, 28px);
   border-bottom: 1px solid var(--border);
+}
+
+.chat-turn-list {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 2vh, 22px);
+  width: 100%;
+}
+
+.chat-turn {
+  width: 100%;
+  max-width: 100%;
+}
+
+.chat-turn + .chat-turn {
+  padding-top: clamp(12px, 1.8vh, 18px);
+  border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+}
+
+.chat-turn.is-player p {
+  color: var(--muted);
+  font-size: clamp(0.98em, 1.15vw, 1.12em);
 }
 
 .narration-panel .current-action span {
@@ -1218,8 +1241,8 @@ button {
 }
 
 .narration-speaker-block {
-  max-width: min(var(--read-max-ch), 100%);
-  margin-bottom: clamp(16px, 2vh, 24px);
+  max-width: 100%;
+  margin-bottom: clamp(8px, 1.2vh, 12px);
 }
 
 .narration-speaker-row {
@@ -1390,12 +1413,12 @@ button {
 
 .narration-panel p {
   width: 100%;
-  max-width: min(var(--read-max-ch), 100%);
+  max-width: 100%;
   min-width: 0;
   margin: 0;
   color: var(--text-strong);
   font-family: var(--read-font-family);
-  font-size: clamp(1.05em, 1.4vw, 1.32em);
+  font-size: clamp(1.04em, 1.18vw, 1.22em);
   line-height: var(--read-line-height);
   overflow-wrap: break-word;
   white-space: pre-wrap;

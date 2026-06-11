@@ -57,6 +57,7 @@ export function normalizeAdventureSettings(value: unknown): AdventureSettings {
 
   return {
     prompt: normalizeText(value.prompt, defaults.prompt, 20_000),
+    initialText: normalizeText(value.initialText, defaults.initialText, 12_000),
     additionalMemories: normalizeText(
       value.additionalMemories,
       defaults.additionalMemories,

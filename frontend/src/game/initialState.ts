@@ -31,16 +31,22 @@ export type ActiveGameState = {
 };
 
 export function createNewGameState(): ActiveGameState {
+  const adventureSettings = structuredClone(DEFAULT_ADVENTURE_SETTINGS);
+  const initialText = adventureSettings.initialText.trim();
+  const initialHistory: Turn[] = initialText
+    ? [{ role: "narrator", content: initialText }]
+    : [];
+
   return {
-    currentReply: "",
+    currentReply: initialText,
     currentAction: "",
-    history: [],
+    history: initialHistory,
     attributes: { ...INITIAL_ATTRIBUTES },
     status: {
       location: INITIAL_STATUS.location,
       inventory: [...INITIAL_STATUS.inventory]
     },
     skills: createInitialSkills(),
-    adventureSettings: structuredClone(DEFAULT_ADVENTURE_SETTINGS)
+    adventureSettings
   };
 }

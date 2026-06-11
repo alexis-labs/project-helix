@@ -92,7 +92,7 @@ export async function requestNarration(
         folders: useSkills ? formatFoldersForApi(skillsForRequest) : [],
         attributes,
         status,
-        history: history.slice(-12).map((turn) => ({
+        history: history.map((turn) => ({
           role: turn.role,
           content: turn.contextContent || turn.content
         }))

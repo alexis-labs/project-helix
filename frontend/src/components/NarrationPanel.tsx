@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { loadingNarration } from "../content/story";
 import { uiText } from "../content/uiText";
 import type { AttributeKey } from "../game/attributeChanges";
+import type { Turn } from "../types";
 import type { LlmDebugPayload } from "../../../shared/llmDebug";
 import { AttributeChangeList } from "./AttributeChangeList";
 import { LlmDebugContent, LlmDebugTrigger } from "./LlmDebugPanel";
@@ -10,6 +11,7 @@ type NarrationPanelProps = {
   attributeChanges?: Partial<Record<AttributeKey, number>> | null;
   currentAction: string;
   currentReply: string;
+  history: Turn[];
   isLoading: boolean;
   llmDebug?: LlmDebugPayload | null;
 };
@@ -18,6 +20,7 @@ export function NarrationPanel({
   attributeChanges,
   currentAction,
   currentReply,
+  history,
   isLoading,
   llmDebug = null
 }: NarrationPanelProps) {
@@ -32,6 +35,20 @@ export function NarrationPanel({
   const showAttributeChanges =
     !isLoading && displayedText === targetText && Boolean(currentAction);
   const showDebug = !isLoading && Boolean(currentAction) && Boolean(llmDebug);
+  const visibleHistory = isLoading
+    ? [...history, { role: "narrator" as const, content: loadingNarration }]
+    : history.length > 0
+      ? history
+      : currentReply
+        ? [{ role: "narrator" as const, content: currentReply }]
+        : [];
+  const latestNarratorIndex = [...visibleHistory]
+    .reverse()
+    .findIndex((turn) => turn.role === "narrator");
+  const latestNarratorTurnIndex =
+    latestNarratorIndex === -1
+      ? -1
+      : visibleHistory.length - 1 - latestNarratorIndex;
 
   useEffect(() => {
     setDebugOpen(false);
@@ -59,46 +76,70 @@ export function NarrationPanel({
   }, [isLoading, shouldReduceMotion, targetText]);
 
   useEffect(() => {
-    panelRef.current?.scrollTo({ top: 0 });
-  }, [currentAction, targetText]);
-
-  useEffect(() => {
     const panel = panelRef.current;
 
     if (!panel) {
       return;
     }
 
-    panel.scrollTop = panel.scrollHeight;
-  }, [currentAction, displayedText]);
+    panel.scrollTo({
+      top: panel.scrollHeight,
+      behavior: shouldReduceMotion ? "auto" : "smooth"
+    });
+  }, [currentAction, displayedText, shouldReduceMotion, visibleHistory.length]);
 
   return (
     <article className="narration-panel" aria-live="polite" ref={panelRef}>
-      {currentAction ? (
-        <div className="current-action">
-          <span>{uiText.currentActionLabel}</span>
-          <p>{currentAction}</p>
-        </div>
-      ) : null}
-      <div className="narration-speaker-block">
-        <div className="narration-speaker-row">
-          <span className="speaker">{uiText.narratorLabel}</span>
-          {showDebug ? (
-            <LlmDebugTrigger
-              debug={llmDebug}
-              isOpen={debugOpen}
-              onToggle={() => setDebugOpen((open) => !open)}
-            />
-          ) : null}
-        </div>
-        {debugOpen && llmDebug ? <LlmDebugContent debug={llmDebug} /> : null}
+      <div className="chat-turn-list">
+        {visibleHistory.map((turn, index) => {
+          const isLatestNarrator =
+            turn.role === "narrator" && index === latestNarratorTurnIndex;
+          const text = isLatestNarrator ? displayedText : turn.content;
+
+          if (!text.trim()) {
+            return null;
+          }
+
+          return (
+            <section
+              className={[
+                "chat-turn",
+                turn.role === "player" ? "is-player" : "is-narrator"
+              ].join(" ")}
+              key={`${turn.role}-${index}-${turn.content.slice(0, 24)}`}
+            >
+              <div className="narration-speaker-block">
+                <div className="narration-speaker-row">
+                  <span className="speaker">
+                    {turn.role === "player"
+                      ? uiText.currentActionLabel
+                      : uiText.narratorLabel}
+                  </span>
+                  {isLatestNarrator && showDebug ? (
+                    <LlmDebugTrigger
+                      debug={llmDebug}
+                      isOpen={debugOpen}
+                      onToggle={() => setDebugOpen((open) => !open)}
+                    />
+                  ) : null}
+                </div>
+                {isLatestNarrator && debugOpen && llmDebug ? (
+                  <LlmDebugContent debug={llmDebug} />
+                ) : null}
+              </div>
+              <p
+                aria-label={isLatestNarrator ? targetText : turn.content}
+                className={isLatestNarrator ? "typewriter-text" : undefined}
+              >
+                {text}
+                {isLatestNarrator && !shouldReduceMotion && !isLoading ? (
+                  <span aria-hidden="true" className="text-cursor" />
+                ) : null}
+              </p>
+            </section>
+          );
+        })}
       </div>
-      <p aria-label={targetText} className="typewriter-text">
-        {displayedText}
-        {!shouldReduceMotion && !isLoading ? (
-          <span aria-hidden="true" className="text-cursor" />
-        ) : null}
-      </p>
       {showAttributeChanges ? (
         <AttributeChangeList
           changes={attributeChanges}

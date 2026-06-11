@@ -47,7 +47,7 @@ export async function requestStorySummary(
         adventureSettings,
         skills: useSkills ? formatSkillsForApi(skills) : [],
         folders: useSkills ? formatFoldersForApi(skills) : [],
-        history: history.slice(-12).map((turn) => ({
+        history: history.map((turn) => ({
           role: turn.role,
           content: turn.contextContent || turn.content
         }))

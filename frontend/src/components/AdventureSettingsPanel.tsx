@@ -5,6 +5,7 @@ import {
   Backpack,
   BrainCircuit,
   CheckCircle2,
+  FileText,
   Plus,
   RefreshCw,
   MapPin,
@@ -31,6 +32,7 @@ import type {
 
 export type SettingsSection =
   | "prompt"
+  | "initialText"
   | "stats"
   | "items"
   | "location"
@@ -69,6 +71,13 @@ const settingsTabs: {
     label: "Prompt",
     description: "System prompt enviado ao modelo. Vazio por defeito.",
     icon: ScrollText
+  },
+  {
+    id: "initialText",
+    group: "Sandbox",
+    label: "Texto inicial",
+    description: "Texto apresentado na primeira interacao.",
+    icon: FileText
   },
   {
     id: "stats",
@@ -274,6 +283,14 @@ export function AdventureSettingsPanel({
     setDraftSettings({
       ...draftSettings,
       prompt
+    });
+  }
+
+  function updateInitialText(initialText: string) {
+    setApplyStatus("dirty");
+    setDraftSettings({
+      ...draftSettings,
+      initialText
     });
   }
 
@@ -496,6 +513,36 @@ export function AdventureSettingsPanel({
                 <span>Clica «Atualizar alteracoes» para guardar.</span>
                 <span>
                   {draftSettings.prompt.length.toLocaleString("pt-PT")} caracteres
+                </span>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {activeSection === "initialText" ? (
+          <section
+            className="settings-section settings-section--fill"
+            aria-label="Texto inicial"
+          >
+            <div className="settings-panel-card settings-prompt-editor">
+              <p className="settings-panel-card-hint">
+                Texto apresentado no chat quando comecas um novo jogo. Se ficar
+                vazio, o jogo inicia em silencio.
+              </p>
+              <label className="settings-field settings-field--editor">
+                <span>Texto inicial</span>
+                <textarea
+                  className="settings-prompt-textarea"
+                  onChange={(event) => updateInitialText(event.target.value)}
+                  placeholder="Ex.: A venda aperta-te a pele. Ha madeira humida sob os joelhos..."
+                  rows={16}
+                  value={draftSettings.initialText}
+                />
+              </label>
+              <div className="settings-prompt-footer">
+                <span>Clica «Atualizar alteracoes» para guardar.</span>
+                <span>
+                  {draftSettings.initialText.length.toLocaleString("pt-PT")} caracteres
                 </span>
               </div>
             </div>

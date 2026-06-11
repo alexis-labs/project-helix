@@ -27,6 +27,7 @@ export type LlmRuntimeSettings = {
 
 export type AdventureSettings = {
   prompt: string;
+  initialText: string;
   additionalMemories: string;
   skillsEnabled: boolean;
   appearance: AdventureAppearance;
@@ -163,6 +164,7 @@ Responde apenas com texto narrativo.`;
 
 export const DEFAULT_ADVENTURE_SETTINGS: AdventureSettings = {
   prompt: DEFAULT_BLINDFOLD_SYSTEM_PROMPT,
+  initialText: "",
   additionalMemories: "",
   skillsEnabled: true,
   appearance: {

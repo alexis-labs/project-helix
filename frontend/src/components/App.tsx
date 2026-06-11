@@ -37,7 +37,6 @@ import { getAttributeDeltas } from "../game/attributeChanges";
 import { buildDiaryEntries, filterDiaryEntries } from "../game/diaryEntries";
 import {
   connectionFailureNarration,
-  openingNarration
 } from "../content/story";
 import { uiText } from "../content/uiText";
 import type { ActiveGameState } from "../game/initialState";
@@ -264,6 +263,16 @@ function persistProgress(state: ActiveGameState) {
   saveGame(state);
 }
 
+function buildInitialHistory(initialText: string): Turn[] {
+  const content = initialText.trim();
+
+  return content ? [{ role: "narrator", content }] : [];
+}
+
+function canReplaceInitialNarration(history: Turn[]) {
+  return history.every((turn) => turn.role === "narrator");
+}
+
 type CenterPanel = "diary" | `settings-${SettingsSection}` | null;
 
 function toSettingsPanel(section: SettingsSection): CenterPanel {
@@ -289,12 +298,10 @@ export function App() {
 
     return savedTheme === "light" ? "light" : "dark";
   });
-  const [currentReply, setCurrentReply] = useState(openingNarration);
+  const [currentReply, setCurrentReply] = useState("");
   const [currentAction, setCurrentAction] = useState("");
   const [currentLlmDebug, setCurrentLlmDebug] = useState<LlmDebugPayload | null>(null);
-  const [history, setHistory] = useState<Turn[]>([
-    { role: "narrator", content: openingNarration }
-  ]);
+  const [history, setHistory] = useState<Turn[]>([]);
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -553,10 +560,20 @@ export function App() {
     nextStatus: GameStatus,
     nextSkills: AdventureSkills
   ) {
+    const nextInitialHistory = canReplaceInitialNarration(history)
+      ? buildInitialHistory(nextSettings.initialText)
+      : history;
+    const nextCurrentReply =
+      canReplaceInitialNarration(history) && !currentAction
+        ? nextSettings.initialText.trim()
+        : currentReply;
+
     setAdventureSettings(nextSettings);
     setAttributes(nextAttributes);
     setStatus(nextStatus);
     setSkills(nextSkills);
+    setCurrentReply(nextCurrentReply);
+    setHistory(nextInitialHistory);
     setTheme(nextSettings.appearance.theme);
     setEreadTone(nextSettings.appearance.ereaderTone);
     setFontScale(nextSettings.appearance.fontScale);
@@ -566,9 +583,9 @@ export function App() {
     }
 
     persistProgress({
-      currentReply,
+      currentReply: nextCurrentReply,
       currentAction,
-      history,
+      history: nextInitialHistory,
       attributes: nextAttributes,
       status: nextStatus,
       skills: nextSkills,
@@ -872,6 +889,7 @@ export function App() {
                   attributeChanges={currentAttributeChanges}
                   currentAction={currentAction}
                   currentReply={currentReply}
+                  history={history}
                   isLoading={isLoading}
                   llmDebug={currentLlmDebug}
                 />
