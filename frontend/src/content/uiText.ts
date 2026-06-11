@@ -43,6 +43,9 @@ export const uiText = {
   themeDarkLabel: "Modo escuro",
   audioOnLabel: "Silenciar",
   audioOffLabel: "Ambiente",
+  restartGameLabel: "Reiniciar jogo",
+  restartGameConfirmMessage:
+    "Reiniciar o jogo vai apagar a sessao atual. Esta acao nao pode ser desfeita. Queres mesmo continuar?",
   ereadToneLabel: "Luminosidade",
   ereadToneToggleLabel: "Ajustar luminosidade",
   ereadToneAriaLabel: "Ajustar luminosidade e tom do ecra",

@@ -642,6 +642,14 @@ export function App() {
     setScreen("playing");
   }
 
+  function restartGame() {
+    if (!window.confirm(uiText.restartGameConfirmMessage)) {
+      return;
+    }
+
+    startNewGame();
+  }
+
   function continueGame() {
     const saved = loadSavedGame();
 
@@ -855,7 +863,7 @@ export function App() {
           />
         ) : (
           <>
-            <GameHeader theme={theme} />
+            <GameHeader onRestart={restartGame} theme={theme} />
             <StorySearchBar
               onQueryChange={(query) => {
                 setStorySearchQuery(query);
